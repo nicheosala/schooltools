@@ -56,10 +56,3 @@ def extract(students: Iterable[str]) -> str:
 def register(students: list[str]) -> None:
     for i, s in enumerate(students, 1):
         print(i, s)
-
-
-if __name__ == "__main__":
-
-    students = scrape("schooltools/classi/2clsa.html")
-    groups = create_random_groups(students, 3)
-    print_groups(groups)
