@@ -1,3 +1,6 @@
+# Installa sia l'hook pre-commit sia quello pre-push con un solo `pre-commit install`.
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -23,3 +26,22 @@ repos:
     rev: 0.12.12
     hooks:
       - id: uv-lock
+
+  # Type check e test sono lenti: girano prima del push, non a ogni commit.
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: uv run ty check
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        stages: [pre-push]
