@@ -13,7 +13,7 @@ foglio per classe.
 ## Installazione
 
 ```sh
-git clone http://localhost:3000/nicheosala/schooltools.git
+git clone https://github.com/nicheosala/schooltools.git
 cd schooltools
 uv sync
 ```
@@ -89,7 +89,7 @@ salva la pagina del registro di classe dal browser e passala al programma.
 ## Sviluppo
 
 ```sh
-uv run pytest                                    # 61 test, nessuna rete
+uv run pytest                                    # 65 test, nessuna rete
 uv run ruff check . && uv run ruff format .      # stile
 uv run ty check                                  # tipi
 ```
@@ -113,3 +113,11 @@ Il login riproduce quello che fa il browser: una POST su
 `auth-p7/app/default/AuthApi4.php` e poi le pagine del registro riusando il
 cookie di sessione. Se l'utenza è collegata a più profili, il programma chiede
 quale usare.
+
+## Licenza
+
+Questo progetto è rilasciato sotto [CC0 1.0
+Universal](https://creativecommons.org/publicdomain/zero/1.0/): l'autore
+rinuncia a ogni diritto d'autore, quindi puoi copiarlo, modificarlo e
+distribuirlo per qualsiasi scopo, anche commerciale, senza chiedere permesso e
+senza obbligo di attribuzione. Il testo completo è nel file `LICENSE`.
