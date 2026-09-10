@@ -1,0 +1,10 @@
+# Normalizza i fine riga nella working tree a LF su ogni piattaforma, cosi'
+# un checkout su Windows non puo' introdurre CRLF nel codice o nella
+# configurazione.
+* text=auto eol=lf
+
+# ...tranne le fixture, che sono byte-esatte: sono l'input dei test di
+# parsing e vanno confrontate cosi' come sono state salvate. `-text` dice a
+# git di non fare alcuna conversione, in nessuna direzione, qualunque sia
+# core.autocrlf sulla macchina che fa il checkout.
+tests/data/*.html -text

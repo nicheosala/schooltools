@@ -1,10 +1,10 @@
-"""Lettura delle credenziali di Spaggiari da `credenziali.env`."""
+"""Lettura delle credenziali di Spaggiari da `schooltools.env`."""
 
 from dataclasses import dataclass
 from os import environ
 from pathlib import Path
 
-PERCORSO_PREDEFINITO = Path("credenziali.env")
+PERCORSO_PREDEFINITO = Path("schooltools.env")
 
 CHIAVE_UTENTE = "SPAGGIARI_UTENTE"
 CHIAVE_PASSWORD = "SPAGGIARI_PASSWORD"

@@ -35,7 +35,7 @@ uv run pre-commit install
 Copia il file di esempio e mettici le credenziali con cui accedi a Spaggiari:
 
 ```sh
-cp credenziali.env.esempio credenziali.env
+cp schooltools.env.example schooltools.env
 ```
 
 ```
@@ -43,7 +43,7 @@ SPAGGIARI_UTENTE=il-tuo-codice-personale
 SPAGGIARI_PASSWORD=la-tua-password
 ```
 
-`credenziali.env` è ignorato da git, quindi non finisce nei commit. In
+`schooltools.env` è ignorato da git, quindi non finisce nei commit. In
 alternativa si possono usare le variabili d'ambiente con lo stesso nome, utile
 se preferisci tenere la password in un gestore di segreti:
 
@@ -89,7 +89,7 @@ uv run python -m schooltools --classe tutte --xlsx studenti.xlsx
 | `--xlsx [FILE]` | scrivi in un file xlsx (predefinito `studenti.xlsx`) |
 | `--schermo` | mostra i nomi a schermo |
 | `--file HTML` | leggi da una pagina `regclasse.php` salvata invece che dalla rete |
-| `--env FILE` | file con le credenziali (predefinito `credenziali.env`) |
+| `--env FILE` | file con le credenziali (predefinito `schooltools.env`) |
 | `--help` | l'elenco completo delle opzioni |
 
 `--file` serve quando non c'è connessione o il registro è irraggiungibile:
@@ -129,7 +129,7 @@ anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
 | `src/schooltools/spaggiari.py` | login e lettura delle pagine del registro |
 | `src/schooltools/parsing.py` | estrazione di classi e studenti dall'HTML (funzioni pure) |
 | `src/schooltools/export.py` | scrittura del file xlsx |
-| `src/schooltools/config.py` | lettura di `credenziali.env` |
+| `src/schooltools/config.py` | lettura di `schooltools.env` |
 | `src/schooltools/students.py` | gruppi, estrazioni a sorte, export csv per Microsoft 365 |
 
 Il login riproduce quello che fa il browser: una POST su

@@ -1,14 +1,27 @@
-*.egg-info/
+# Ambienti virtuali
+.venv/
+
+# File compilati
+__pycache__/
 *.py[cod]
-*.xlsx
-.coverage
-.env
-.idea/
+
+# Cache degli strumenti
 .pytest_cache/
 .ruff_cache/
-.venv/
-.vscode/
-__pycache__/
+.pyrefly_cache/
+
+# Copertura
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Artefatti di build
 build/
-credenziali.env
 dist/
+*.egg-info/
+
+# Output a runtime e segreti
+*.xlsx
+.env
+schooltools.env

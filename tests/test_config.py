@@ -35,7 +35,7 @@ def test_leggi_env_conserva_gli_uguali_nel_valore() -> None:
 
 def test_carica_credenziali_dal_file(tmp_path: Path) -> None:
     """Utente e password vengono presi dal file indicato."""
-    percorso = tmp_path / "credenziali.env"
+    percorso = tmp_path / "schooltools.env"
     percorso.write_text(f"{CHIAVE_UTENTE}=prof\n{CHIAVE_PASSWORD}=segreta\n")
 
     credenziali = carica_credenziali(percorso)
@@ -57,8 +57,8 @@ def test_carica_credenziali_dalle_variabili_ambiente(
 def test_carica_credenziali_incomplete(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Con la sola utente manca la password: l'errore cita il file da compilare."""
     monkeypatch.delenv(CHIAVE_PASSWORD, raising=False)
-    percorso = tmp_path / "credenziali.env"
+    percorso = tmp_path / "schooltools.env"
     percorso.write_text(f"{CHIAVE_UTENTE}=prof\n")
 
-    with pytest.raises(CredenzialiMancantiError, match=r"credenziali\.env"):
+    with pytest.raises(CredenzialiMancantiError, match=r"schooltools\.env"):
         carica_credenziali(percorso)

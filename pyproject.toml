@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Education",
     "Natural Language :: Italian",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Education",
     "Topic :: Utilities",
@@ -28,9 +27,8 @@ dependencies = [
     "openpyxl>=3.1.5",
 ]
 
-[build-system]
-requires = ["uv_build>=0.12.10,<0.13.0"]
-build-backend = "uv_build"
+[project.scripts]
+schooltools = "schooltools.cli:main"
 
 [dependency-groups]
 dev = [
@@ -42,15 +40,9 @@ dev = [
     "types-openpyxl>=3.1.5",
 ]
 
-[project.scripts]
-schooltools = "schooltools.cli:main"
-
-[tool.pyrefly]
-preset = "strict"
-# python-version e' volutamente assente: pyrefly la prende dall'interprete,
-# che uv costruisce da .python-version.
-project-includes = ["src", "tests"]
-search-path = [".", "src"]
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
 # target-version e' volutamente assente: ruff la deriva da
@@ -63,6 +55,13 @@ select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "PTH",
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.pyrefly]
+preset = "strict"
+# python-version e' volutamente assente: pyrefly la prende dall'interprete,
+# che uv costruisce da .python-version.
+project-includes = ["src", "tests"]
+search-path = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
