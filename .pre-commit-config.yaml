@@ -15,21 +15,33 @@ repos:
       - id: trailing-whitespace
         exclude: ^tests/data/
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.6
-    hooks:
-      - id: ruff-check
-        args: [--fix]
-      - id: ruff-format
-
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.12.12
-    hooks:
-      - id: uv-lock
-
-  # Type check e test sono lenti: girano prima del push, non a ogni commit.
+  # ruff e uv arrivano dall'ambiente del progetto, non da un repo di hook con
+  # un `rev` a se': cosi' la versione e' una sola, quella di uv.lock, ed e' la
+  # stessa che usano l'editor e la riga di comando.
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: uv-lock
+        name: uv lock
+        entry: uv lock
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      # Type check e test sono lenti: girano prima del push, non a ogni commit.
       - id: ty
         name: ty check
         entry: uv run ty check

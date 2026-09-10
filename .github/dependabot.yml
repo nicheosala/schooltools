@@ -1,15 +1,18 @@
 version: 2
 
+# Stesso schema per tutti gli ecosistemi: controllo settimanale, minor e patch
+# accorpate in un'unica pull request, major separati. Passano tutte dalla CI e,
+# se e' verde, vengono mergiate da sole (.github/workflows/automerge.yml): i
+# major restano a parte solo per capire a colpo d'occhio chi ha rotto cosa.
 updates:
   # Dipendenze Python: e' qui che nascono le vulnerabilita' transitive, come
-  # quella di soupsieve, quindi e' l'ecosistema controllato piu' spesso.
+  # quella di soupsieve. Copre anche ruff, ty, pytest e pre-commit, che il
+  # progetto usa come strumenti.
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
-      # Minor e patch in un'unica pull request; i major restano separati,
-      # perche' sono gli unici che possono davvero rompere qualcosa.
       python:
         patterns: ["*"]
         update-types: ["minor", "patch"]
@@ -18,17 +21,19 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
-  # Anche i rev degli hook sono pinnati: senza questo resterebbero fermi
-  # mentre ruff avanza, e la formattazione locale divergerebbe da quella in CI.
+  # Resta un solo `rev` pinnato, quello di pre-commit-hooks: ruff e uv ora
+  # arrivano dall'ambiente del progetto, quindi li aggiorna l'ecosistema uv.
   - package-ecosystem: "pre-commit"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
     groups:
       hook:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

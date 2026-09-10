@@ -3,6 +3,8 @@ name = "schooltools"
 version = "0.1.0"
 description = "Strumenti per gestire gli elenchi degli studenti dal registro Spaggiari"
 authors = [{ name = "Nicolò Sala", email = "me@niceo.org" }]
+# Unica fonte di verita' per la versione di Python: ruff e ty derivano
+# da qui la versione su cui basare i controlli, e uv quale interprete usare.
 requires-python = ">=3.14"
 readme = "README.md"
 license = "CC0-1.0"
@@ -35,9 +37,6 @@ schooltools = "schooltools.cli:main"
 testpaths = ["tests"]
 addopts = "-q --cov=schooltools --cov-report=term-missing"
 
-[tool.ruff]
-target-version = "py314"
-
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
@@ -46,6 +45,3 @@ source = ["schooltools"]
 
 [tool.coverage.report]
 exclude_also = ["if TYPE_CHECKING:"]
-
-[tool.ty.environment]
-python-version = "3.14"
