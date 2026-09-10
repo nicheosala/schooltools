@@ -1,0 +1,34 @@
+version: 2
+
+updates:
+  # Dipendenze Python: e' qui che nascono le vulnerabilita' transitive, come
+  # quella di soupsieve, quindi e' l'ecosistema controllato piu' spesso.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      # Minor e patch in un'unica pull request; i major restano separati,
+      # perche' sono gli unici che possono davvero rompere qualcosa.
+      python:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Le action sono pinnate a un tag esatto nel workflow.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # Anche i rev degli hook sono pinnati: senza questo resterebbero fermi
+  # mentre ruff avanza, e la formattazione locale divergerebbe da quella in CI.
+  - package-ecosystem: "pre-commit"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      hook:
+        patterns: ["*"]
