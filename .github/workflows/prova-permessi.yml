@@ -1,0 +1,26 @@
+name: Prova permessi
+
+# Workflow temporaneo: verifica se `permissions:` puo' concedere la scrittura
+# quando l'impostazione del repository e' di sola lettura. Da rimuovere dopo.
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prova una scrittura senza effetti
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Crea un blob git non referenziato da nulla: richiede contents: write
+        # ma non produce ref, notifiche o modifiche visibili nel repository.
+        run: |
+          if gh api -X POST "repos/$GITHUB_REPOSITORY/git/blobs" \
+               -f content=prova -f encoding=utf-8 > /dev/null 2>&1; then
+            echo "ESITO: scrittura CONSENTITA"
+          else
+            echo "ESITO: scrittura NEGATA"
+            exit 1
+          fi
