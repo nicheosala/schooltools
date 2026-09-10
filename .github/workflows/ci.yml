@@ -21,17 +21,19 @@ jobs:
       - name: Installa le dipendenze
         run: uv sync --locked
 
-      - name: Lint
-        run: uv run ruff check .
+      - name: Cache degli ambienti di pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
-      - name: Formattazione
-        run: uv run ruff format --check .
+      # Unica fonte di verita': .pre-commit-config.yaml. Gli hook senza `stages`
+      # girano in ogni stage, quindi --hook-stage pre-push li esegue tutti,
+      # inclusi ty e pytest.
+      - name: Controlli
+        run: uv run pre-commit run --all-files --hook-stage pre-push --show-diff-on-failure
 
-      - name: Tipi
-        run: uv run ty check
-
-      - name: Test
-        run: uv run pytest
-
+      # Non e' un hook git: dipende dal database delle vulnerabilita', non dal
+      # codice, quindi puo' fallire anche senza modifiche. Resta solo qui.
       - name: Vulnerabilita' nelle dipendenze
         run: uv audit --preview-features audit-command
