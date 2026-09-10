@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup, Tag
 LUNGHEZZA_SIGLA = 4
 SELETTORE_MENU = "#lista_classi a[href]"
 SELETTORE_SELEZIONE = "a[href*='regclasse.php'][href*='classe_id='][title]"
+SELETTORE_ACCOUNT = "[x-account]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +23,14 @@ class Classe:
 
     id: str
     nome: str
+
+
+@dataclass(frozen=True, slots=True)
+class Account:
+    """Uno dei profili tra cui scegliere quando un'utenza ne ha piu' di uno."""
+
+    uid: str
+    descrizione: str
 
 
 def _minestra(html: str) -> BeautifulSoup:
@@ -120,3 +129,18 @@ def parse_studenti(html: str) -> list[str]:
         if isinstance(nome, Tag):
             studenti.append(_testo(nome).title())
     return studenti
+
+
+def parse_account(html: str) -> list[Account]:
+    """I profili proposti quando un'utenza e' collegata a piu' scuole.
+
+    L'HTML e' il frammento di dialogo che il server di autenticazione
+    restituisce dentro la risposta JSON del login.
+    """
+
+    account: list[Account] = []
+    for voce in _minestra(html).select(SELETTORE_ACCOUNT):
+        uid = voce.get("x-account")
+        if isinstance(uid, str) and uid:
+            account.append(Account(uid=uid, descrizione=_testo(voce) or uid))
+    return account

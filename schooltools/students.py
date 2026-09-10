@@ -2,9 +2,8 @@
 
 from collections.abc import Iterable, Iterator, Sequence
 from csv import reader, writer
+from itertools import batched
 from random import randint, sample
-
-from more_itertools import chunked
 
 CAMPI_CSV = [
     "Nome utente",
@@ -68,7 +67,7 @@ def read_from_csv(csv_file_path: str) -> list[str]:
 
 
 def create_groups(students: Iterable[str], d: int) -> Iterator[list[str]]:
-    return chunked(students, d)
+    return (list(gruppo) for gruppo in batched(students, d, strict=False))
 
 
 def create_random_groups(students: Sequence[str], d: int) -> Iterator[list[str]]:

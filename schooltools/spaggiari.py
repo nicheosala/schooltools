@@ -5,15 +5,19 @@ lettura delle pagine del registro di classe riusando i cookie di sessione.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
 from json import JSONDecodeError
 from types import TracebackType
 from typing import Any, Self
 
-from bs4 import BeautifulSoup, Tag
 from httpx2 import Client, HTTPError, Response
 
-from schooltools.parsing import Classe, parse_classi, parse_studenti
+from schooltools.parsing import (
+    Account,
+    Classe,
+    parse_account,
+    parse_classi,
+    parse_studenti,
+)
 
 BASE = "https://web.spaggiari.eu"
 URL_PAGINA_LOGIN = f"{BASE}/home/app/default/login.php"
@@ -33,14 +37,6 @@ class ErroreRegistro(Exception):
 
 class ErroreLogin(ErroreRegistro):
     """L'autenticazione non e' andata a buon fine."""
-
-
-@dataclass(frozen=True, slots=True)
-class Account:
-    """Uno dei profili tra cui scegliere quando un'utenza ne ha piu' di uno."""
-
-    uid: str
-    descrizione: str
 
 
 SceltaAccount = Callable[[Sequence[Account]], Account]
@@ -82,19 +78,7 @@ def _account(dati: dict[str, Any]) -> list[Account]:
         return []
 
     html = pfolio.get("filteredDialogHtml") or pfolio.get("fullDialogHtml")
-    if not isinstance(html, str):
-        return []
-
-    account: list[Account] = []
-    soup = BeautifulSoup(html, "html.parser")
-    for voce in soup.select("[x-account]"):
-        if not isinstance(voce, Tag):
-            continue
-        uid = voce.get("x-account")
-        if isinstance(uid, str) and uid:
-            descrizione = " ".join(voce.get_text(" ", strip=True).split())
-            account.append(Account(uid=uid, descrizione=descrizione or uid))
-    return account
+    return parse_account(html) if isinstance(html, str) else []
 
 
 class Registro:

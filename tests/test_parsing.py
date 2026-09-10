@@ -1,6 +1,8 @@
 from schooltools.parsing import (
+    Account,
     Classe,
     abbrevia,
+    parse_account,
     parse_classi,
     parse_nome_classe,
     parse_studenti,
@@ -100,3 +102,29 @@ def test_abbrevia_lascia_stare_i_nomi_gia_corti() -> None:
 def test_abbrevia_senza_numero_iniziale() -> None:
     assert abbrevia("LICEO SCIENTIFICO") == "LICEO SCIENTIFICO"
     assert abbrevia("") == ""
+
+
+def test_parse_account_legge_i_profili() -> None:
+    html = """
+    <div class="item" x-account="uno">Scuola A</div>
+    <div class="item" x-account="due">  Scuola   B  </div>
+    """
+    assert parse_account(html) == [
+        Account(uid="uno", descrizione="Scuola A"),
+        Account(uid="due", descrizione="Scuola B"),
+    ]
+
+
+def test_parse_account_ripiega_sull_uid_se_manca_la_descrizione() -> None:
+    assert parse_account('<div x-account="uno"></div>') == [
+        Account(uid="uno", descrizione="uno")
+    ]
+
+
+def test_parse_account_scarta_le_voci_senza_uid() -> None:
+    html = '<div x-account="">vuota</div><div>niente</div>'
+    assert parse_account(html) == []
+
+
+def test_parse_account_dialogo_vuoto() -> None:
+    assert parse_account("<html></html>") == []

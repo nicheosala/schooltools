@@ -3,8 +3,10 @@
 from schooltools.config import Credenziali, carica_credenziali
 from schooltools.export import scrivi_xlsx
 from schooltools.parsing import (
+    Account,
     Classe,
     abbrevia,
+    parse_account,
     parse_classi,
     parse_nome_classe,
     parse_studenti,
@@ -23,6 +25,7 @@ from schooltools.students import (
 )
 
 __all__ = [
+    "Account",
     "Classe",
     "Credenziali",
     "ErroreLogin",
@@ -34,6 +37,7 @@ __all__ = [
     "create_random_groups",
     "dividi_nome",
     "extract",
+    "parse_account",
     "parse_classi",
     "parse_nome_classe",
     "parse_studenti",
