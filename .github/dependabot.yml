@@ -14,7 +14,7 @@ updates:
         patterns: ["*"]
         update-types: ["minor", "patch"]
 
-  # Le action sono pinnate a un tag esatto nel workflow.
+  # Le action sono pinnate allo SHA del commit nel workflow.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
