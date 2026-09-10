@@ -15,16 +15,15 @@ dependencies = [
 
 [tool.uv]
 
-[tool.uv.build-backend]
-module-root = ""
-
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.6.2",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.6",
     "ty>=0.0.80",
 ]
@@ -34,13 +33,19 @@ schooltools = "schooltools.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --cov=schooltools --cov-report=term-missing"
 
 [tool.ruff]
 target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.coverage.run]
+source = ["schooltools"]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:"]
 
 [tool.ty.environment]
 python-version = "3.14"

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Installa uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      # --locked fallisce se uv.lock non e' aggiornato rispetto a pyproject.toml,
+      # cosi' l'ambiente della CI e' identico a quello di sviluppo.
+      - name: Installa le dipendenze
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Formattazione
+        run: uv run ruff format --check .
+
+      - name: Tipi
+        run: uv run ty check
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Vulnerabilita' nelle dipendenze
+        run: uv audit --preview-features audit-command

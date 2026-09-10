@@ -6,7 +6,8 @@ foglio per classe.
 
 ## Requisiti
 
-- Python 3.14 o superiore
+- Python 3.14 o superiore (la versione usata dal progetto è in `.python-version`;
+  se manca, `uv` la scarica da solo)
 - [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - un account docente ClasseViva
 
@@ -20,6 +21,13 @@ uv sync
 
 `uv sync` crea l'ambiente virtuale in `.venv` e installa le dipendenze
 elencate in `pyproject.toml`; non serve attivarlo a mano, ci pensa `uv run`.
+
+Se hai intenzione di modificare il codice, installa anche gli hook di
+pre-commit, che al momento del commit sistemano stile e formattazione:
+
+```sh
+uv run pre-commit install
+```
 
 ## Configurazione
 
@@ -88,11 +96,20 @@ salva la pagina del registro di classe dal browser e passala al programma.
 
 ## Sviluppo
 
-```sh
-uv run pytest                                    # 65 test, nessuna rete
-uv run ruff check . && uv run ruff format .      # stile
-uv run ty check                                  # tipi
-```
+| Comando | Cosa fa |
+| --- | --- |
+| `uv sync` | installa le dipendenze nell'ambiente virtuale |
+| `uv run pytest` | esegue i test e stampa la copertura |
+| `uv run ruff check .` | lint |
+| `uv run ruff format .` | formattazione |
+| `uv run ty check` | controllo dei tipi |
+| `uv audit --preview-features audit-command` | vulnerabilità note nelle dipendenze |
+| `uv build` | costruisce sdist e wheel in `dist/` |
+| `uv run pre-commit run --all-files` | tutti gli hook su tutto il repo |
+
+Gli stessi controlli girano su GitHub Actions a ogni push e pull request
+(`.github/workflows/ci.yml`), con `uv sync --locked`, che fallisce se
+`uv.lock` non è allineato a `pyproject.toml`.
 
 I test non toccano la rete: le pagine di ClasseViva sono salvate ridotte e
 anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
@@ -102,12 +119,12 @@ anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
 
 | File | Contenuto |
 | --- | --- |
-| `schooltools/cli.py` | domande interattive e opzioni da riga di comando |
-| `schooltools/spaggiari.py` | login e lettura delle pagine del registro |
-| `schooltools/parsing.py` | estrazione di classi e studenti dall'HTML (funzioni pure) |
-| `schooltools/export.py` | scrittura del file xlsx |
-| `schooltools/config.py` | lettura di `credenziali.env` |
-| `schooltools/students.py` | gruppi, estrazioni a sorte, export csv per Microsoft 365 |
+| `src/schooltools/cli.py` | domande interattive e opzioni da riga di comando |
+| `src/schooltools/spaggiari.py` | login e lettura delle pagine del registro |
+| `src/schooltools/parsing.py` | estrazione di classi e studenti dall'HTML (funzioni pure) |
+| `src/schooltools/export.py` | scrittura del file xlsx |
+| `src/schooltools/config.py` | lettura di `credenziali.env` |
+| `src/schooltools/students.py` | gruppi, estrazioni a sorte, export csv per Microsoft 365 |
 
 Il login riproduce quello che fa il browser: una POST su
 `auth-p7/app/default/AuthApi4.php` e poi le pagine del registro riusando il
