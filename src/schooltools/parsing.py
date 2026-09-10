@@ -54,7 +54,6 @@ def abbrevia(nome: str) -> str:
     e' uguale per tutte le classi e non serve a distinguerle. Se il nome non
     comincia con un numero viene restituito invariato.
     """
-
     parti = nome.split()
     if not parti or not any(c.isdigit() for c in parti[0]):
         return nome
@@ -70,7 +69,6 @@ def abbrevia(nome: str) -> str:
 
 def parse_nome_classe(html: str) -> str | None:
     """Il nome abbreviato della classe a cui si riferisce la pagina."""
-
     soup = _minestra(html)
     intestazione = soup.find(id="classe_change")
     if isinstance(intestazione, Tag):
@@ -86,7 +84,6 @@ def parse_classi(html: str) -> list[Classe]:
     registro di classe. Se non c'e' nessuno dei due (docente con una sola
     classe) si ripiega sulla classe della pagina stessa.
     """
-
     soup = _minestra(html)
 
     for selettore in (SELETTORE_MENU, SELETTORE_SELEZIONE):
@@ -121,7 +118,6 @@ def _classi_dai_collegamenti(soup: BeautifulSoup, selettore: str) -> list[Classe
 
 def parse_studenti(html: str) -> list[str]:
     """I nomi degli studenti elencati nel registro di classe."""
-
     soup = _minestra(html)
     studenti: list[str] = []
     for cella in soup.select("td.elenco_studenti"):
@@ -137,7 +133,6 @@ def parse_account(html: str) -> list[Account]:
     L'HTML e' il frammento di dialogo che il server di autenticazione
     restituisce dentro la risposta JSON del login.
     """
-
     account: list[Account] = []
     for voce in _minestra(html).select(SELETTORE_ACCOUNT):
         uid = voce.get("x-account")

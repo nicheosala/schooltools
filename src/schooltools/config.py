@@ -15,19 +15,20 @@ MODELLO = f"""\
 """
 
 
-class CredenzialiMancanti(Exception):
+class CredenzialiMancantiError(Exception):
     """Le credenziali non sono state trovate o sono incomplete."""
 
 
 @dataclass(frozen=True, slots=True)
 class Credenziali:
+    """Utente e password con cui autenticarsi su Spaggiari."""
+
     utente: str
     password: str
 
 
 def leggi_env(testo: str) -> dict[str, str]:
     """Interpreta il contenuto di un file `.env` (righe `CHIAVE=valore`)."""
-
     valori: dict[str, str] = {}
     for riga in testo.splitlines():
         riga = riga.strip()
@@ -44,9 +45,20 @@ def leggi_env(testo: str) -> dict[str, str]:
 
 
 def carica_credenziali(percorso: Path = PERCORSO_PREDEFINITO) -> Credenziali:
-    """Le credenziali lette dal file indicato, con le variabili d'ambiente
-    come alternativa se il file non esiste o non le contiene."""
+    """Le credenziali di Spaggiari, lette dal file indicato.
 
+    Le variabili d'ambiente `SPAGGIARI_UTENTE` e `SPAGGIARI_PASSWORD` fanno da
+    alternativa quando il file non esiste o non contiene la voce cercata.
+
+    Args:
+        percorso: File `.env` da cui leggere le credenziali.
+
+    Returns:
+        Le credenziali trovate.
+
+    Raises:
+        CredenzialiMancantiError: Se utente o password restano vuoti.
+    """
     valori: dict[str, str] = {}
     if percorso.is_file():
         valori = leggi_env(percorso.read_text(encoding="utf-8"))
@@ -55,7 +67,7 @@ def carica_credenziali(percorso: Path = PERCORSO_PREDEFINITO) -> Credenziali:
     password = valori.get(CHIAVE_PASSWORD) or environ.get(CHIAVE_PASSWORD, "")
 
     if not utente or not password:
-        raise CredenzialiMancanti(
+        raise CredenzialiMancantiError(
             f"Credenziali non trovate: crea il file {percorso} con dentro\n\n{MODELLO}"
         )
     return Credenziali(utente=utente, password=password)

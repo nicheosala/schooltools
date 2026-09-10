@@ -21,6 +21,7 @@ jobs:
       github.event.workflow_run.actor.login == 'dependabot[bot]' &&
       github.event.workflow_run.pull_requests[0]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Mergia la pull request
         env:

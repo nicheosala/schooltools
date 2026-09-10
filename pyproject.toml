@@ -3,19 +3,30 @@ name = "schooltools"
 version = "0.1.0"
 description = "Strumenti per gestire gli elenchi degli studenti dal registro Spaggiari"
 authors = [{ name = "Nicolò Sala", email = "me@niceo.org" }]
-# Unica fonte di verita' per la versione di Python: ruff e ty derivano
-# da qui la versione su cui basare i controlli, e uv quale interprete usare.
-requires-python = ">=3.14"
+# Unica fonte di verita' per la versione di Python: ruff deriva da qui la
+# versione su cui basare i controlli, e uv quale interprete usare.
+requires-python = ">=3.14,<3.15"
 readme = "README.md"
 license = "CC0-1.0"
 license-files = ["LICENSE"]
+keywords = ["scuola", "spaggiari", "classeviva", "registro elettronico", "studenti", "xlsx"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Education",
+    "Natural Language :: Italian",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Education",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "httpx2>=2.12.0",
     "openpyxl>=3.1.5",
 ]
-
-[tool.uv]
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13.0"]
@@ -24,24 +35,52 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.2",
+    "pyrefly>=1.2.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.16.6",
-    "ty>=0.0.80",
+    "types-openpyxl>=3.1.5",
 ]
 
 [project.scripts]
 schooltools = "schooltools.cli:main"
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-q --cov=schooltools --cov-report=term-missing"
+[tool.pyrefly]
+preset = "strict"
+# python-version e' volutamente assente: pyrefly la prende dall'interprete,
+# che uv costruisce da .python-version.
+project-includes = ["src", "tests"]
+search-path = [".", "src"]
+
+[tool.ruff]
+# target-version e' volutamente assente: ruff la deriva da
+# project.requires-python, cosi' la versione e' dichiarata in un posto solo.
+line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "PTH",
+          "RET", "ARG", "TC", "ANN", "D", "RUF"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "--strict-config",
+    "--strict-markers",
+    "--cov",
+    "--cov-report=term-missing",
+]
 
 [tool.coverage.run]
-source = ["schooltools"]
+source = ["src/schooltools"]
+branch = true
 
 [tool.coverage.report]
-exclude_also = ["if TYPE_CHECKING:"]
+show_missing = true
+fail_under = 85
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

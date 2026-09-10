@@ -6,8 +6,8 @@ foglio per classe.
 
 ## Requisiti
 
-- Python 3.14 o superiore (la versione usata dal progetto è in `.python-version`;
-  se manca, `uv` la scarica da solo)
+- Python 3.14 (la versione è fissata in `.python-version`; se manca,
+  `uv` la scarica da solo)
 - [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - un account docente ClasseViva
 
@@ -23,8 +23,8 @@ uv sync
 elencate in `pyproject.toml`; non serve attivarlo a mano, ci pensa `uv run`.
 
 Se hai intenzione di modificare il codice, installa anche gli hook di
-pre-commit: al momento del commit sistemano stile e formattazione, mentre al
-momento del push eseguono anche il controllo dei tipi e i test.
+pre-commit: al momento del commit sistemano stile e formattazione e
+controllano i tipi, mentre al momento del push eseguono anche i test.
 
 ```sh
 uv run pre-commit install
@@ -103,15 +103,19 @@ salva la pagina del registro di classe dal browser e passala al programma.
 | `uv run pytest` | esegue i test e stampa la copertura |
 | `uv run ruff check .` | lint |
 | `uv run ruff format .` | formattazione |
-| `uv run ty check` | controllo dei tipi |
+| `uv run pyrefly check --min-severity warn` | controllo dei tipi |
 | `uv audit --preview-features audit-command` | vulnerabilità note nelle dipendenze |
 | `uv build` | costruisce sdist e wheel in `dist/` |
 | `uv run pre-commit run --all-files` | gli hook del commit su tutto il repo |
-| `uv run pre-commit run --all-files --hook-stage pre-push` | come sopra, più tipi e test |
+| `uv run pre-commit run --all-files --hook-stage pre-push` | come sopra, più i test |
 
 Gli stessi controlli girano su GitHub Actions a ogni push e pull request
 (`.github/workflows/ci.yml`), con `uv sync --locked`, che fallisce se
-`uv.lock` non è allineato a `pyproject.toml`.
+`uv.lock` non è allineato a `pyproject.toml`. La CI non riscrive i comandi:
+esegue `pre-commit run --all-files`, così gli hook locali e i controlli
+remoti non possono divergere. Test e scansione delle dipendenze hanno un job
+a sé; quest'ultimo gira anche una volta a settimana, perché una vulnerabilità
+può essere pubblicata senza che il lock file cambi.
 
 I test non toccano la rete: le pagine di ClasseViva sono salvate ridotte e
 anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un

@@ -1,16 +1,20 @@
 """Scrittura degli elenchi di studenti in un file xlsx."""
 
-from collections.abc import Container, Iterable, Mapping, Sequence
-from pathlib import Path
 from re import sub
+from typing import TYPE_CHECKING
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.worksheet import Worksheet
 
 from schooltools.parsing import abbrevia
 from schooltools.students import dividi_nome
+
+if TYPE_CHECKING:
+    from collections.abc import Container, Iterable, Mapping, Sequence
+    from pathlib import Path
+
+    from openpyxl.worksheet.worksheet import Worksheet
 
 INTESTAZIONI = ("Cognome", "Nome")
 LUNGHEZZA_MASSIMA_FOGLIO = 31
@@ -18,9 +22,22 @@ CARATTERI_VIETATI = r"[\[\]:*?/\\]"
 
 
 def nome_foglio(nome: str, usati: Container[str] = ()) -> str:
-    """Un nome di foglio valido per xlsx: niente caratteri vietati, al
-    massimo 31 caratteri e diverso da quelli gia' usati."""
+    """Adatta il nome di una classe ai limiti dei titoli di foglio xlsx.
 
+    Toglie i caratteri che xlsx vieta, accorcia il nome alla sola sigla se
+    supera i 31 caratteri consentiti e, se il titolo e' gia' occupato, ci
+    aggiunge un numero progressivo.
+
+    Args:
+        nome: Nome della classe da usare come titolo.
+        usati: Titoli gia' assegnati ad altri fogli della stessa cartella.
+
+    Returns:
+        Un titolo valido e non ancora usato.
+
+    Raises:
+        ValueError: Se le prime 99 varianti numerate sono tutte occupate.
+    """
     pulito = sub(CARATTERI_VIETATI, " ", nome)
     pulito = " ".join(pulito.split()).strip("'") or "Classe"
     if len(pulito) > LUNGHEZZA_MASSIMA_FOGLIO:
@@ -39,7 +56,6 @@ def nome_foglio(nome: str, usati: Container[str] = ()) -> str:
 
 def scrivi_xlsx(percorso: Path, classi: Mapping[str, Sequence[str]]) -> Path:
     """Scrive un foglio per classe, con una riga per studente."""
-
     if not classi:
         raise ValueError("Nessuna classe da scrivere")
 
@@ -70,7 +86,6 @@ def _scrivi_foglio(foglio: Worksheet, studenti: Iterable[str]) -> None:
     foglio.freeze_panes = "A2"
     for i, intestazione in enumerate(INTESTAZIONI, 1):
         larghezza = max(
-            [len(intestazione)]
-            + [len(str(c.value or "")) for c in foglio[get_column_letter(i)]]
+            [len(intestazione)] + [len(str(c.value or "")) for c in foglio[get_column_letter(i)]]
         )
         foglio.column_dimensions[get_column_letter(i)].width = larghezza + 2

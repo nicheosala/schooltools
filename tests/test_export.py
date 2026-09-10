@@ -1,20 +1,28 @@
-from pathlib import Path
+"""Test della scrittura degli elenchi di studenti in xlsx."""
+
+from typing import TYPE_CHECKING
 
 import pytest
 from openpyxl import load_workbook
 
 from schooltools.export import INTESTAZIONI, nome_foglio, scrivi_xlsx
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def test_nome_foglio_corto_resta_uguale() -> None:
+    """Un nome che rientra nei limiti di xlsx non viene toccato."""
     assert nome_foglio("1A") == "1A"
 
 
 def test_nome_foglio_abbrevia_i_nomi_lunghi() -> None:
+    """Oltre i 31 caratteri si tiene la sola sigla della classe."""
     assert nome_foglio("1E LSA LICEO SCIENTIFICO OPZIONE SCIENZE APPLICATE") == "1E LSA"
 
 
 def test_nome_foglio_tronca_quando_non_puo_abbreviare() -> None:
+    """Senza una sigla da isolare il nome viene tagliato a 31 caratteri."""
     nome = nome_foglio("CORSO SERALE DI INFORMATICA PER ADULTI LAVORATORI")
 
     assert len(nome) == 31
@@ -22,23 +30,28 @@ def test_nome_foglio_tronca_quando_non_puo_abbreviare() -> None:
 
 
 def test_nome_foglio_lascia_stare_i_nomi_gia_corti() -> None:
+    """Un nome che non supera il limite non viene abbreviato, anche se ha piu' parole."""
     assert nome_foglio("3A CORSO SERALE") == "3A CORSO SERALE"
 
 
 def test_nome_foglio_toglie_i_caratteri_vietati() -> None:
+    """I caratteri che xlsx non ammette in un titolo diventano spazi."""
     assert nome_foglio("3A/B: [prova]?*") == "3A B prova"
 
 
 def test_nome_foglio_evita_i_duplicati() -> None:
+    """Un titolo gia' assegnato riceve un numero progressivo."""
     assert nome_foglio("1A", usati=["1A"]) == "1A (2)"
     assert nome_foglio("1A", usati=["1A", "1A (2)"]) == "1A (3)"
 
 
 def test_nome_foglio_vuoto() -> None:
+    """Un nome fatto di soli spazi diventa "Classe"."""
     assert nome_foglio("   ") == "Classe"
 
 
 def test_scrivi_xlsx_un_foglio_per_classe(tmp_path: Path) -> None:
+    """Ogni classe ha il suo foglio, con l'intestazione e una riga per studente."""
     percorso = scrivi_xlsx(
         tmp_path / "studenti.xlsx",
         {"1A": ["Rossi Giulio", "D'Agostino Maria Luisa"], "2B": ["Verdi Anna"]},
@@ -57,6 +70,7 @@ def test_scrivi_xlsx_un_foglio_per_classe(tmp_path: Path) -> None:
 
 
 def test_scrivi_xlsx_classi_con_nome_lungo_e_uguale(tmp_path: Path) -> None:
+    """Due classi che si accorciano allo stesso titolo restano su fogli distinti."""
     lungo = "LICEO SCIENTIFICO OPZIONE SCIENZE APPLICATE"
     percorso = scrivi_xlsx(tmp_path / "s.xlsx", {f"{lungo} A": [], f"{lungo} B": []})
 
@@ -66,11 +80,13 @@ def test_scrivi_xlsx_classi_con_nome_lungo_e_uguale(tmp_path: Path) -> None:
 
 
 def test_scrivi_xlsx_crea_le_cartelle(tmp_path: Path) -> None:
+    """Le cartelle mancanti nel percorso di destinazione vengono create."""
     percorso = scrivi_xlsx(tmp_path / "a" / "b" / "s.xlsx", {"1A": ["Rossi Giulio"]})
 
     assert percorso.is_file()
 
 
 def test_scrivi_xlsx_senza_classi(tmp_path: Path) -> None:
+    """Senza nessuna classe non si scrive un file vuoto: si segnala l'errore."""
     with pytest.raises(ValueError, match="Nessuna classe"):
         scrivi_xlsx(tmp_path / "s.xlsx", {})

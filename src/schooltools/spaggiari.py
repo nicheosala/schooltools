@@ -6,8 +6,7 @@ lettura delle pagine del registro di classe riusando i cookie di sessione.
 
 from collections.abc import Callable, Sequence
 from json import JSONDecodeError
-from types import TracebackType
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from httpx2 import Client, HTTPError, Response
 
@@ -18,6 +17,9 @@ from schooltools.parsing import (
     parse_classi,
     parse_studenti,
 )
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 BASE = "https://web.spaggiari.eu"
 URL_PAGINA_LOGIN = f"{BASE}/home/app/default/login.php"
@@ -31,11 +33,11 @@ AGENTE = (
 )
 
 
-class ErroreRegistro(Exception):
+class RegistroError(Exception):
     """Qualcosa e' andato storto parlando con il registro elettronico."""
 
 
-class ErroreLogin(ErroreRegistro):
+class LoginError(RegistroError):
     """L'autenticazione non e' andata a buon fine."""
 
 
@@ -50,11 +52,9 @@ def _json(risposta: Response) -> dict[str, Any]:
     try:
         dati = risposta.json()
     except (JSONDecodeError, ValueError) as errore:
-        raise ErroreLogin(
-            "Risposta inattesa dal server di autenticazione di Spaggiari"
-        ) from errore
+        raise LoginError("Risposta inattesa dal server di autenticazione di Spaggiari") from errore
     if not isinstance(dati, dict):
-        raise ErroreLogin("Risposta inattesa dal server di autenticazione di Spaggiari")
+        raise LoginError("Risposta inattesa dal server di autenticazione di Spaggiari")
     return dati
 
 
@@ -85,10 +85,30 @@ class Registro:
     """Una sessione autenticata sul registro elettronico."""
 
     def __init__(self, client: Client) -> None:
+        """Avvolge un client HTTP gia' pronto.
+
+        I test passano qui un client con un trasporto finto; per l'uso normale
+        c'e' `apri`, che ne costruisce uno configurato per Spaggiari.
+
+        Args:
+            client: Client su cui viaggiano le richieste al registro.
+        """
         self._client = client
 
     @classmethod
     def apri(cls, timeout: float = 30.0) -> Self:
+        """Apre una sessione verso Spaggiari, ancora da autenticare.
+
+        Il client si presenta con lo User-Agent di un browser e segue i
+        reindirizzamenti, perche' il registro ne usa parecchi fra login e
+        pagine di classe.
+
+        Args:
+            timeout: Secondi di attesa per ogni richiesta.
+
+        Returns:
+            La sessione, su cui va poi chiamato `login`.
+        """
         return cls(
             Client(
                 headers={"User-Agent": AGENTE},
@@ -98,6 +118,7 @@ class Registro:
         )
 
     def __enter__(self) -> Self:
+        """Restituisce la sessione stessa, da usare dentro un blocco `with`."""
         return self
 
     def __exit__(
@@ -106,9 +127,11 @@ class Registro:
         valore: BaseException | None,
         traccia: TracebackType | None,
     ) -> None:
+        """Chiude la sessione all'uscita dal blocco `with`."""
         self.chiudi()
 
     def chiudi(self) -> None:
+        """Chiude il client e la connessione verso Spaggiari."""
         self._client.close()
 
     def login(
@@ -122,7 +145,6 @@ class Registro:
         Se l'utenza e' collegata a piu' profili, `scegli_account` decide quale
         usare; di default viene preso il primo.
         """
-
         self._get(URL_PAGINA_LOGIN)
         dati = _json(
             self._post(
@@ -140,22 +162,20 @@ class Registro:
         auth = _auth(dati)
 
         if not auth.get("verified"):
-            raise ErroreLogin(f"Accesso non riuscito: {_errori(auth)}")
+            raise LoginError(f"Accesso non riuscito: {_errori(auth)}")
 
         if not auth.get("loggedIn"):
             account = _account(dati)
             if not account:
-                raise ErroreLogin(
+                raise LoginError(
                     "Accesso non riuscito: il registro chiede di scegliere un "
                     "profilo ma non ne ha proposto nessuno"
                 )
             scelto = scegli_account(account)
-            dati = _json(
-                self._post(URL_API_AUTH, {"a": "aLoginSam"}, {"uid": scelto.uid})
-            )
+            dati = _json(self._post(URL_API_AUTH, {"a": "aLoginSam"}, {"uid": scelto.uid}))
             auth = _auth(dati)
             if not auth.get("loggedIn"):
-                raise ErroreLogin(f"Accesso non riuscito: {_errori(auth)}")
+                raise LoginError(f"Accesso non riuscito: {_errori(auth)}")
 
     def classi(self) -> list[Classe]:
         """Le classi visibili nel registro.
@@ -163,25 +183,22 @@ class Registro:
         Senza `classe_id` il registro rimanda alla pagina di selezione della
         classe, da cui si ricavano codici e identificativi.
         """
-
         classi = parse_classi(self._pagina_registro(None))
         if not classi:
-            raise ErroreRegistro(
-                "Nessuna classe trovata nel registro: la sessione potrebbe "
-                "essere scaduta"
+            raise RegistroError(
+                "Nessuna classe trovata nel registro: la sessione potrebbe essere scaduta"
             )
         return classi
 
     def studenti(self, classe: Classe) -> list[str]:
         """I nomi degli studenti della classe indicata."""
-
         return parse_studenti(self._pagina_registro(classe.id))
 
     def _pagina_registro(self, id_classe: str | None) -> str:
         parametri = {"classe_id": id_classe, "gruppo_id": ""} if id_classe else None
         risposta = self._get(URL_REGISTRO, parametri)
         if "login.php" in str(risposta.url):
-            raise ErroreRegistro("Sessione non valida: e' necessario rifare il login")
+            raise RegistroError("Sessione non valida: e' necessario rifare il login")
         return risposta.text
 
     def _get(self, url: str, parametri: dict[str, str] | None = None) -> Response:
@@ -189,12 +206,10 @@ class Registro:
             risposta = self._client.get(url, params=parametri)
             risposta.raise_for_status()
         except HTTPError as errore:
-            raise ErroreRegistro(f"Errore di rete su {url}: {errore}") from errore
+            raise RegistroError(f"Errore di rete su {url}: {errore}") from errore
         return risposta
 
-    def _post(
-        self, url: str, parametri: dict[str, str], dati: dict[str, str]
-    ) -> Response:
+    def _post(self, url: str, parametri: dict[str, str], dati: dict[str, str]) -> Response:
         try:
             risposta = self._client.post(
                 url,
@@ -204,5 +219,5 @@ class Registro:
             )
             risposta.raise_for_status()
         except HTTPError as errore:
-            raise ErroreRegistro(f"Errore di rete su {url}: {errore}") from errore
+            raise RegistroError(f"Errore di rete su {url}: {errore}") from errore
         return risposta

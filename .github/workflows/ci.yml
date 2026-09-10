@@ -4,29 +4,45 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  # Rigira ogni settimana: una advisory pubblicata oggi riguarda un lock file
+  # che non e' cambiato, e nessun push la farebbe emergere.
+  schedule:
+    - cron: "0 6 * * 1"
 
-# Il job si limita a leggere il codice: cosi' anche un'action compromessa
+# I job si limitano a leggere il codice: cosi' anche un'action compromessa
 # non puo' scrivere sul repository.
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
+  checks:
+    name: Lint, formato e tipi
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Le action sono pinnate allo SHA del commit, non al tag: un tag e'
       # spostabile dal suo autore, lo SHA no. Dependabot aggiorna SHA e
       # commento insieme.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Installa uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: checks
 
-      # --locked fallisce se uv.lock non e' aggiornato rispetto a pyproject.toml,
-      # cosi' l'ambiente della CI e' identico a quello di sviluppo.
-      - name: Installa le dipendenze
+      # --locked fallisce se uv.lock non e' aggiornato rispetto a
+      # pyproject.toml, cosi' l'ambiente della CI e' identico a quello di
+      # sviluppo.
+      - name: Installa Python e le dipendenze
         run: uv sync --locked
 
       - name: Cache degli ambienti di pre-commit
@@ -35,13 +51,55 @@ jobs:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
 
-      # Unica fonte di verita': .pre-commit-config.yaml. Gli hook senza `stages`
-      # girano in ogni stage, quindi --hook-stage pre-push li esegue tutti,
-      # inclusi ty e pytest.
+      # Unica fonte di verita': .pre-commit-config.yaml. I controlli non sono
+      # mai ripetuti qui, cosi' la CI e gli hook locali non possono divergere.
+      # Niente --hook-stage: pytest e' un hook pre-push e ha il job qui sotto.
       - name: Controlli
-        run: uv run pre-commit run --all-files --hook-stage pre-push --show-diff-on-failure
+        run: uv run pre-commit run --all-files --show-diff-on-failure --color=always
 
-      # Non e' un hook git: dipende dal database delle vulnerabilita', non dal
-      # codice, quindi puo' fallire anche senza modifiche. Resta solo qui.
-      - name: Vulnerabilita' nelle dipendenze
+  tests:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installa uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: tests
+
+      - name: Installa Python e le dipendenze
+        run: uv sync --locked
+
+      # Troppo lento per un hook di commit: gira al pre-push in locale e in un
+      # job a se' qui. La soglia di copertura sta in [tool.coverage.report].
+      - name: Suite di test
+        run: uv run pytest
+
+  audit:
+    name: Vulnerabilita' nelle dipendenze
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Installa uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          cache-suffix: audit
+
+      # uv audit legge direttamente uv.lock: non c'e' niente da sincronizzare.
+      # Non e' un hook git, dipende dal database delle vulnerabilita' e non dal
+      # codice, quindi puo' fallire anche senza modifiche da parte nostra. E'
+      # per questo che sopra c'e' lo schedule settimanale.
+      - name: Scansione delle dipendenze bloccate
         run: uv audit --preview-features audit-command

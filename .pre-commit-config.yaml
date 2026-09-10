@@ -1,58 +1,80 @@
-# Installa sia l'hook pre-commit sia quello pre-push con un solo `pre-commit install`.
+# Installa sia l'hook pre-commit sia quello pre-push con un solo
+# `pre-commit install`.
 default_install_hook_types: [pre-commit, pre-push]
+minimum_pre_commit_version: "4.0.0"
+
+# Unica fonte di verita' per i controlli di qualita'.
+#
+# La CI non ripete questi comandi: .github/workflows/ci.yml esegue
+# `pre-commit run --all-files`, quindi gli hook qui sotto sono letteralmente i
+# controlli che sbarrano ogni push e ogni pull request. Va tenuto cosi': un
+# controllo aggiunto qui e' un controllo che gira in CI, e non c'e' altro posto
+# dove aggiungerne uno.
+#
+# Ogni hook specifico del progetto passa da `uv run --frozen`, cosi' le
+# versioni degli strumenti arrivano da uv.lock e non da un secondo insieme di
+# revisioni pinnate che potrebbe scostarsi da quelle installate in locale.
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
+      - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
+      - id: detect-private-key
       - id: end-of-file-fixer
         exclude: ^tests/data/
       - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: ^tests/data/
       - id: trailing-whitespace
         exclude: ^tests/data/
 
-  # ruff e uv arrivano dall'ambiente del progetto, non da un repo di hook con
-  # un `rev` a se': cosi' la versione e' una sola, quella di uv.lock, ed e' la
-  # stessa che usano l'editor e la riga di comando.
   - repo: local
     hooks:
+      - id: uv-lock-check
+        name: uv lock e' allineato a pyproject.toml
+        entry: uv lock --check
+        language: system
+        files: ^(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      # ruff e gli altri strumenti arrivano dall'ambiente del progetto, non da
+      # un repo di hook con un `rev` a se': cosi' la versione e' una sola,
+      # quella di uv.lock, ed e' la stessa che usano l'editor e la riga di
+      # comando.
       - id: ruff-check
         name: ruff check
-        entry: uv run ruff check --fix --force-exclude
+        entry: uv run --frozen ruff check --fix --force-exclude
         language: system
         types_or: [python, pyi]
         require_serial: true
 
       - id: ruff-format
         name: ruff format
-        entry: uv run ruff format --force-exclude
+        entry: uv run --frozen ruff format --force-exclude
         language: system
         types_or: [python, pyi]
         require_serial: true
 
-      - id: uv-lock
-        name: uv lock
-        entry: uv lock
+      # --min-severity warn fa fallire anche i warning: il controllo e'
+      # superato solo con zero errori *e* zero warning.
+      - id: pyrefly
+        name: pyrefly check
+        entry: uv run --frozen pyrefly check --min-severity warn
         language: system
-        files: ^(pyproject\.toml|uv\.lock)$
+        types_or: [python, pyi]
         pass_filenames: false
+        require_serial: true
 
-      # Type check e test sono lenti: girano prima del push, non a ogni commit.
-      - id: ty
-        name: ty check
-        entry: uv run ty check
-        language: system
-        always_run: true
-        pass_filenames: false
-        stages: [pre-push]
-
+      # Troppo lento per un hook di commit: gira prima del push, e in CI ha un
+      # job dedicato.
       - id: pytest
         name: pytest
-        entry: uv run pytest
+        entry: uv run --frozen pytest
         language: system
         always_run: true
         pass_filenames: false

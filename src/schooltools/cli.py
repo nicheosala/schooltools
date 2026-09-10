@@ -1,23 +1,34 @@
 """Interfaccia interattiva per ottenere i nomi degli studenti dal registro."""
 
 from argparse import ArgumentParser, Namespace
-from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from schooltools.config import (
     PERCORSO_PREDEFINITO,
-    CredenzialiMancanti,
+    CredenzialiMancantiError,
     carica_credenziali,
 )
 from schooltools.export import scrivi_xlsx
 from schooltools.parsing import Classe, parse_nome_classe, parse_studenti
-from schooltools.spaggiari import Account, ErroreRegistro, Registro
+from schooltools.spaggiari import Account, Registro, RegistroError
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 TUTTE = "tutte"
 XLSX_PREDEFINITO = Path("studenti.xlsx")
 
 
 def argomenti(argv: Sequence[str] | None = None) -> Namespace:
+    """Interpreta gli argomenti della riga di comando.
+
+    Args:
+        argv: Argomenti da interpretare; `None` per quelli di `sys.argv`.
+
+    Returns:
+        Le opzioni riconosciute.
+    """
     parser = ArgumentParser(
         prog="schooltools",
         description=(
@@ -57,11 +68,24 @@ def argomenti(argv: Sequence[str] | None = None) -> Namespace:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Esegue il programma e traduce ogni guasto previsto in un codice di uscita.
+
+    Gli errori di credenziali, di rete e di scrittura non risalgono all'utente
+    come traceback: diventano un messaggio su una riga sola. Anche l'interruzione
+    da tastiera e' trattata cosi', perche' l'interfaccia fa domande e chiuderla
+    con Ctrl-C e' un modo normale di rispondere.
+
+    Args:
+        argv: Argomenti da interpretare; `None` per quelli di `sys.argv`.
+
+    Returns:
+        0 se il lavoro e' andato a buon fine, 1 altrimenti.
+    """
     args = argomenti(argv)
     try:
         elenchi = _raccogli(args)
         _consegna(elenchi, args)
-    except (CredenzialiMancanti, ErroreRegistro, ValueError, OSError) as errore:
+    except (CredenzialiMancantiError, RegistroError, ValueError, OSError) as errore:
         print(f"Errore: {errore}")
         return 1
     except EOFError, KeyboardInterrupt:
@@ -72,7 +96,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 def _raccogli(args: Namespace) -> dict[str, list[str]]:
     """Gli studenti richiesti, per classe."""
-
     if args.file is not None:
         html = Path(args.file).read_text(encoding="utf-8")
         nome = parse_nome_classe(html) or "Classe"
@@ -81,9 +104,7 @@ def _raccogli(args: Namespace) -> dict[str, list[str]]:
     credenziali = carica_credenziali(args.env)
     with Registro.apri() as registro:
         print("Accesso al registro in corso...")
-        registro.login(
-            credenziali.utente, credenziali.password, scegli_account=_scegli_account
-        )
+        registro.login(credenziali.utente, credenziali.password, scegli_account=_scegli_account)
         classi = registro.classi()
         scelte = _scegli_classi(classi, args.classe)
         return {classe.nome: registro.studenti(classe) for classe in scelte}
@@ -131,9 +152,7 @@ def _scegli_classi(classi: Sequence[Classe], richiesta: str | None) -> list[Clas
 def _scegli_account(account: Sequence[Account]) -> Account:
     if len(account) == 1:
         return account[0]
-    scelta = _chiedi_voce(
-        "Con quale profilo vuoi accedere?", [a.descrizione for a in account]
-    )
+    scelta = _chiedi_voce("Con quale profilo vuoi accedere?", [a.descrizione for a in account])
     return account[scelta]
 
 
@@ -154,7 +173,6 @@ def _chiedi_percorso() -> Path:
 
 def _chiedi_voce(domanda: str, voci: Sequence[str]) -> int:
     """Mostra un elenco numerato e restituisce l'indice della voce scelta."""
-
     print(f"\n{domanda}")
     for i, voce in enumerate(voci, 1):
         print(f"  {i}) {voce}")

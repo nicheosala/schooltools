@@ -11,7 +11,7 @@ from schooltools.parsing import (
     parse_nome_classe,
     parse_studenti,
 )
-from schooltools.spaggiari import ErroreLogin, ErroreRegistro, Registro
+from schooltools.spaggiari import LoginError, Registro, RegistroError
 from schooltools.students import (
     create_groups,
     create_random_groups,
@@ -28,9 +28,9 @@ __all__ = [
     "Account",
     "Classe",
     "Credenziali",
-    "ErroreLogin",
-    "ErroreRegistro",
+    "LoginError",
     "Registro",
+    "RegistroError",
     "abbrevia",
     "carica_credenziali",
     "create_groups",
