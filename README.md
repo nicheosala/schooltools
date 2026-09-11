@@ -95,6 +95,49 @@ uv run python -m schooltools --classe tutte --xlsx studenti.xlsx
 `--file` serve quando non c'è connessione o il registro è irraggiungibile:
 salva la pagina del registro di classe dal browser e passala al programma.
 
+### Preparare l'importazione degli utenti (`teams`)
+
+Il sotto-comando `teams` non tocca il registro: prende un elenco che hai già —
+tipicamente quello della segreteria, con le colonne `Nome`, `Cognome` e
+`Classe` — e ne scrive un altro nel formato che il portale Microsoft 365 si
+aspetta per l'importazione degli utenti, quella da cui poi nascono i team delle
+classi.
+
+```sh
+uv run python -m schooltools teams --from segreteria.xlsx --to utenti.xlsx
+```
+
+| Opzione | Significato |
+| --- | --- |
+| `--from FILE` | elenco xlsx di partenza, con le colonne `Nome`, `Cognome`, `Classe` |
+| `--to FILE` | file xlsx da scrivere, sovrascritto se esiste |
+
+Ogni studente diventa una riga con l'indirizzo `nome.cognome@dominio`, la
+posizione `Studente` e la classe nel campo `Reparto`, che è quello su cui
+l'importazione raggruppa gli utenti. Gli elenchi della segreteria arrivano di
+solito in maiuscolo e con il nome del corso per esteso: nomi e cognomi tornano
+con le sole iniziali maiuscole e la classe si riduce alla sua sigla.
+
+Una riga del file di partenza:
+
+| Nome | Cognome | Classe |
+| --- | --- | --- |
+| GIULIO | ROSSI | 1A LL LICEO LINGUISTICO NUOVO ORDINAMENTO |
+
+diventa una riga del file prodotto:
+
+| Nome utente | Nome | Cognome | Nome visualizzato | Posizione | Reparto |
+| --- | --- | --- | --- | --- | --- |
+| `giulio.rossi@…` | Giulio | Rossi | Giulio Rossi | Studente | 1ALL |
+
+Le parole che hanno già delle minuscole non vengono toccate, così `de Luca` e
+`McDonald` restano come li ha scritti chi ha compilato l'elenco.
+
+Del file di partenza non si dà per scontato il tracciato: l'intestazione può
+non essere sulla prima riga, le colonne possono stare in un ordine qualunque e
+le righe vuote vengono saltate. Se manca una colonna o una riga piena non ha né
+nome né cognome, il programma lo dice in una riga sola e esce con codice 1.
+
 ## Sviluppo
 
 | Comando | Cosa fa |
@@ -130,7 +173,8 @@ anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
 | `src/schooltools/parsing.py` | estrazione di classi e studenti dall'HTML (funzioni pure) |
 | `src/schooltools/export.py` | scrittura del file xlsx |
 | `src/schooltools/config.py` | lettura di `schooltools.env` |
-| `src/schooltools/students.py` | gruppi, estrazioni a sorte, export csv per Microsoft 365 |
+| `src/schooltools/students.py` | tracciato di importazione utenti di Microsoft 365 |
+| `src/schooltools/teams.py` | lettura dell'elenco `Nome`/`Cognome`/`Classe` di partenza |
 
 Il login riproduce quello che fa il browser: una POST su
 `auth-p7/app/default/AuthApi4.php` e poi le pagine del registro riusando il

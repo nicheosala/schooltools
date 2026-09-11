@@ -9,15 +9,18 @@ from schooltools.config import (
     CredenzialiMancantiError,
     carica_credenziali,
 )
-from schooltools.export import scrivi_xlsx
+from schooltools.export import scrivi_utenti_xlsx, scrivi_xlsx
 from schooltools.parsing import Classe, parse_nome_classe, parse_studenti
 from schooltools.spaggiari import Account, Registro, RegistroError
+from schooltools.teams import COLONNE_ORIGINE, leggi_origine
 
 if TYPE_CHECKING:
+    from argparse import _SubParsersAction
     from collections.abc import Sequence
 
 TUTTE = "tutte"
 XLSX_PREDEFINITO = Path("studenti.xlsx")
+TEAMS = "teams"
 
 
 def argomenti(argv: Sequence[str] | None = None) -> Namespace:
@@ -64,6 +67,7 @@ def argomenti(argv: Sequence[str] | None = None) -> Namespace:
         default=PERCORSO_PREDEFINITO,
         help=f"file con le credenziali (predefinito: {PERCORSO_PREDEFINITO})",
     )
+    _aggiungi_teams(parser.add_subparsers(dest="comando", metavar="COMANDO"))
     return parser.parse_args(argv)
 
 
@@ -83,8 +87,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     args = argomenti(argv)
     try:
-        elenchi = _raccogli(args)
-        _consegna(elenchi, args)
+        if args.comando == TEAMS:
+            _teams(args)
+        else:
+            _consegna(_raccogli(args), args)
     except (CredenzialiMancantiError, RegistroError, ValueError, OSError) as errore:
         print(f"Errore: {errore}")
         return 1
@@ -92,6 +98,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("\nAnnullato.")
         return 1
     return 0
+
+
+def _aggiungi_teams(comandi: _SubParsersAction[ArgumentParser]) -> None:
+    """Aggiunge il sotto-comando `teams`, che non tocca il registro."""
+    colonne = ", ".join(f"`{c}`" for c in COLONNE_ORIGINE)
+    teams = comandi.add_parser(
+        TEAMS,
+        help="converti un elenco di studenti nel formato di importazione utenti",
+        description=(
+            f"Legge un file xlsx con le colonne {colonne} e ne scrive un altro "
+            "nel formato che il portale Microsoft 365 si aspetta per "
+            "l'importazione degli utenti, una riga per studente. Le righe "
+            "vuote del file di origine vengono saltate."
+        ),
+    )
+    teams.add_argument(
+        "--from",
+        dest="origine",
+        type=Path,
+        required=True,
+        metavar="FILE",
+        help=f"file xlsx di origine, con le colonne {colonne}",
+    )
+    teams.add_argument(
+        "--to",
+        dest="destinazione",
+        type=Path,
+        required=True,
+        metavar="FILE",
+        help="file xlsx da scrivere, sovrascritto se esiste",
+    )
+
+
+def _teams(args: Namespace) -> None:
+    """Converte l'elenco di origine nel formato di importazione utenti."""
+    studenti = leggi_origine(args.origine)
+    percorso = scrivi_utenti_xlsx(args.destinazione, studenti)
+    verbo, quanti = (
+        ("Scritto", "1 studente")
+        if len(studenti) == 1
+        else ("Scritti", f"{len(studenti)} studenti")
+    )
+    print(f"{verbo} {quanti} in {percorso}.")
 
 
 def _raccogli(args: Namespace) -> dict[str, list[str]]:

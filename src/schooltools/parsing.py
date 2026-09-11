@@ -33,38 +33,15 @@ class Account:
     descrizione: str
 
 
-def _minestra(html: str) -> BeautifulSoup:
-    return BeautifulSoup(html, "html.parser")
-
-
-def _testo(tag: Tag) -> str:
-    return sub(r"\s+", " ", tag.get_text(" ", strip=True)).strip()
-
-
-def _classe_id(href: str) -> str | None:
-    valori = parse_qs(urlsplit(href).query).get("classe_id", [])
-    return valori[0] if valori and valori[0] else None
-
-
-def abbrevia(nome: str) -> str:
-    """Il solo codice della classe: "1E LSA LICEO SCIENTIFICO..." -> "1E LSA".
-
-    Il codice e' fatto dalla prima parola (quella con il numero dell'anno) e
-    dalle sigle brevi che la seguono; il resto e' la descrizione del corso, che
-    e' uguale per tutte le classi e non serve a distinguerle. Se il nome non
-    comincia con un numero viene restituito invariato.
-    """
-    parti = nome.split()
-    if not parti or not any(c.isdigit() for c in parti[0]):
-        return nome
-
-    codice = [parti[0]]
-    for parte in parti[1:]:
-        if parte.isalpha() and parte.isupper() and len(parte) <= LUNGHEZZA_SIGLA:
-            codice.append(parte)
-        else:
-            break
-    return " ".join(codice)
+def parse_studenti(html: str) -> list[str]:
+    """I nomi degli studenti elencati nel registro di classe."""
+    soup = _minestra(html)
+    studenti: list[str] = []
+    for cella in soup.select("td.elenco_studenti"):
+        nome = cella.find("div")
+        if isinstance(nome, Tag):
+            studenti.append(_testo(nome).title())
+    return studenti
 
 
 def parse_nome_classe(html: str) -> str | None:
@@ -103,6 +80,86 @@ def parse_classi(html: str) -> list[Classe]:
     return []
 
 
+def parse_account(html: str) -> list[Account]:
+    """I profili proposti quando un'utenza e' collegata a piu' scuole.
+
+    L'HTML e' il frammento di dialogo che il server di autenticazione
+    restituisce dentro la risposta JSON del login.
+    """
+    account: list[Account] = []
+    for voce in _minestra(html).select(SELETTORE_ACCOUNT):
+        uid = voce.get("x-account")
+        if isinstance(uid, str) and uid:
+            account.append(Account(uid=uid, descrizione=_testo(voce) or uid))
+    return account
+
+
+def abbrevia(nome: str) -> str:
+    """Il solo codice della classe: "1E LSA LICEO SCIENTIFICO..." -> "1E LSA".
+
+    Il codice e' fatto dalla prima parola (quella con il numero dell'anno) e
+    dalle sigle brevi che la seguono; il resto e' la descrizione del corso, che
+    e' uguale per tutte le classi e non serve a distinguerle. Se il nome non
+    comincia con un numero viene restituito invariato.
+    """
+    parti = nome.split()
+    if not _comincia_con_anno(parti):
+        return nome
+
+    codice = [parti[0]]
+    for parte in parti[1:]:
+        if parte.isalpha() and parte.isupper() and len(parte) <= LUNGHEZZA_SIGLA:
+            codice.append(parte)
+        else:
+            break
+    return " ".join(codice)
+
+
+def sigla_classe(nome: str) -> str:
+    """La sigla della classe tutta attaccata: "1A LL LICEO LINGUISTICO..." -> "1ALL".
+
+    E' `abbrevia` senza gli spazi interni, la forma compatta che serve dove la
+    classe fa da etichetta e deve venire sempre uguale, comunque sia scritta
+    nella pagina o nel file di partenza ("1E LSA" e "1ELSA" danno lo stesso
+    risultato). Un nome che non comincia con l'anno di corso non e' il codice di
+    una classe: torna com'e', con i soli spazi di troppo ripuliti.
+
+    Args:
+        nome: Nome della classe, per esteso o gia' abbreviato.
+
+    Returns:
+        La sigla, oppure il nome ripulito se non c'e' una sigla da isolare.
+    """
+    if not _comincia_con_anno(nome.split()):
+        return " ".join(nome.split())
+    return "".join(abbrevia(nome).split())
+
+
+def dividi_nome(studente: str) -> tuple[str, str]:
+    """Divide "COGNOME Nome Secondo" in ("COGNOME", "Nome Secondo").
+
+    E' la forma in cui il registro scrive i nomi, quella che restituisce
+    `parse_studenti`: il cognome e' la prima parola, il nome tutto il resto.
+    """
+    parti = studente.split()
+    if not parti:
+        return "", ""
+    return parti[0], " ".join(parti[1:])
+
+
+def _minestra(html: str) -> BeautifulSoup:
+    return BeautifulSoup(html, "html.parser")
+
+
+def _testo(tag: Tag) -> str:
+    return sub(r"\s+", " ", tag.get_text(" ", strip=True)).strip()
+
+
+def _classe_id(href: str) -> str | None:
+    valori = parse_qs(urlsplit(href).query).get("classe_id", [])
+    return valori[0] if valori and valori[0] else None
+
+
 def _classi_dai_collegamenti(soup: BeautifulSoup, selettore: str) -> list[Classe]:
     classi: dict[str, Classe] = {}
     for a in soup.select(selettore):
@@ -116,26 +173,6 @@ def _classi_dai_collegamenti(soup: BeautifulSoup, selettore: str) -> list[Classe
     return list(classi.values())
 
 
-def parse_studenti(html: str) -> list[str]:
-    """I nomi degli studenti elencati nel registro di classe."""
-    soup = _minestra(html)
-    studenti: list[str] = []
-    for cella in soup.select("td.elenco_studenti"):
-        nome = cella.find("div")
-        if isinstance(nome, Tag):
-            studenti.append(_testo(nome).title())
-    return studenti
-
-
-def parse_account(html: str) -> list[Account]:
-    """I profili proposti quando un'utenza e' collegata a piu' scuole.
-
-    L'HTML e' il frammento di dialogo che il server di autenticazione
-    restituisce dentro la risposta JSON del login.
-    """
-    account: list[Account] = []
-    for voce in _minestra(html).select(SELETTORE_ACCOUNT):
-        uid = voce.get("x-account")
-        if isinstance(uid, str) and uid:
-            account.append(Account(uid=uid, descrizione=_testo(voce) or uid))
-    return account
+def _comincia_con_anno(parti: list[str]) -> bool:
+    """Se la prima parola porta il numero dell'anno, il nome e' un codice di classe."""
+    return bool(parti) and any(c.isdigit() for c in parti[0])

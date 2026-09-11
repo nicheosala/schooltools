@@ -59,7 +59,9 @@ documentazione sono in italiano senza lettere accentate (`e'`, `piu'`,
 - **`parsing.py` resta puro.** Prende HTML e restituisce dati: niente rete,
   niente filesystem, niente `print`. E' cio' che lo rende testabile con le
   fixture. Tutto l'I/O di rete sta in `spaggiari.py`, la scrittura in
-  `export.py`.
+  `export.py`, la lettura dell'elenco di partenza di `teams` in `teams.py` -
+  che per lo stesso motivo tiene la parte pura in `studenti_da_righe`, provata
+  con delle liste invece che con dei file.
 - **Il parsing non puo' dare per scontato l'HTML del registro.** ClasseViva
   cambia markup senza preavviso: ogni estrazione va difesa (`isinstance(...,
   Tag)`, attributi che possono mancare, liste vuote) e un elemento assente
@@ -75,7 +77,14 @@ documentazione sono in italiano senza lettere accentate (`e'`, `piu'`,
   rete, di scrittura e l'interruzione da tastiera (`Ctrl-C`, EOF) diventano un
   messaggio su una riga sola e uscita 1. Chiudere con `Ctrl-C` un'interfaccia
   che fa domande e' un modo normale di rispondere, non un guasto.
-- **`students.write_to_csv` non e' codice morto.** Non ha chiamanti nel
-  repository, ma e' esportata in `__all__` ed e' l'export CSV per
-  l'importazione utenti di Microsoft 365: non va rimossa come funzione
-  inutilizzata.
+- **Il tracciato di importazione utenti sta in un posto solo.**
+  `students.riga_utente` compone la riga: le colonne di `CAMPI_CSV` nel loro
+  ordine, l'indirizzo `nome.cognome@DOMINIO`, le iniziali maiuscole
+  (`capitalizza`) e la classe ridotta alla sigla (`sigla_classe`). E' li' che si
+  decide come uno studente appare nel portale; `export.scrivi_utenti_xlsx` la
+  riga la scrive e basta, e chi legge il file di partenza non la tocca.
+- **Niente codice tenuto in vita "per quando servira'".** `students.py` ha
+  ospitato a lungo delle utilita' da cattedra (gruppi, sorteggi, export CSV)
+  senza chiamanti ne' test: sono state tolte, e se serviranno si riscrivono. Una
+  funzione pubblica senza chiamanti nel repository o e' motivata da un commento
+  che dice chi la usa da fuori, o non ci sta.

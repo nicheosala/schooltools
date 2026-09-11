@@ -4,10 +4,12 @@ from schooltools.parsing import (
     Account,
     Classe,
     abbrevia,
+    dividi_nome,
     parse_account,
     parse_classi,
     parse_nome_classe,
     parse_studenti,
+    sigla_classe,
 )
 
 
@@ -100,6 +102,13 @@ def test_parse_classi_ignora_i_collegamenti_senza_title() -> None:
     assert parse_classi(html) == [Classe(id="111", nome="1E")]
 
 
+def test_dividi_nome() -> None:
+    """La prima parola e' il cognome, tutto il resto e' il nome."""
+    assert dividi_nome("Rossi Giulio") == ("Rossi", "Giulio")
+    assert dividi_nome("D'Agostino Maria Luisa") == ("D'Agostino", "Maria Luisa")
+    assert dividi_nome("") == ("", "")
+
+
 def test_abbrevia_tiene_il_codice_della_classe() -> None:
     """Del nome restano l'anno e le sigle brevi, non la descrizione del corso."""
     assert abbrevia("1E LSA LICEO SCIENTIFICO OPZIONE SCIENZE APPLICATE") == "1E LSA"
@@ -112,6 +121,20 @@ def test_abbrevia_lascia_stare_i_nomi_gia_corti() -> None:
     """Un nome fatto di sola sigla passa invariato."""
     assert abbrevia("1E") == "1E"
     assert abbrevia("3F LSA") == "3F LSA"
+
+
+def test_sigla_classe_toglie_gli_spazi_interni() -> None:
+    """La sigla e' il codice tutto attaccato, comunque sia scritto il nome."""
+    assert sigla_classe("1A LL LICEO LINGUISTICO NUOVO ORDINAMENTO") == "1ALL"
+    assert sigla_classe("2 AFM AMMINISTRAZIONE FINANZA E MARKETING") == "2AFM"
+    assert sigla_classe("1E LSA") == "1ELSA"
+    assert sigla_classe("3ELSA") == "3ELSA"
+
+
+def test_sigla_classe_senza_un_codice_da_isolare() -> None:
+    """Un nome che non comincia con l'anno non e' un codice: resta com'e'."""
+    assert sigla_classe("LICEO  SCIENTIFICO") == "LICEO SCIENTIFICO"
+    assert sigla_classe("  ") == ""
 
 
 def test_abbrevia_senza_numero_iniziale() -> None:

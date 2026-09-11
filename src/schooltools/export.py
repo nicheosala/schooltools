@@ -7,8 +7,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
-from schooltools.parsing import abbrevia
-from schooltools.students import dividi_nome
+from schooltools.parsing import abbrevia, dividi_nome
+from schooltools.students import CAMPI_UTENTI, riga_utente
 
 if TYPE_CHECKING:
     from collections.abc import Container, Iterable, Mapping, Sequence
@@ -16,7 +16,10 @@ if TYPE_CHECKING:
 
     from openpyxl.worksheet.worksheet import Worksheet
 
+    from schooltools.students import Studente
+
 INTESTAZIONI = ("Cognome", "Nome")
+FOGLIO_UTENTI = "Utenti"
 LUNGHEZZA_MASSIMA_FOGLIO = 31
 CARATTERI_VIETATI = r"[\[\]:*?/\\]"
 
@@ -75,16 +78,56 @@ def scrivi_xlsx(percorso: Path, classi: Mapping[str, Sequence[str]]) -> Path:
     return percorso
 
 
+def scrivi_utenti_xlsx(percorso: Path, studenti: Sequence[Studente]) -> Path:
+    """Scrive gli studenti nel formato di importazione utenti di Microsoft 365.
+
+    E' lo stesso tracciato di `students.write_to_csv`, su un foglio solo: le
+    colonne sono quelle di `CAMPI_UTENTI` e ogni studente occupa una riga.
+
+    Args:
+        percorso: File xlsx da scrivere, sovrascritto se esiste; le cartelle
+            mancanti vengono create.
+        studenti: Studenti da scrivere, nell'ordine in cui arrivano.
+
+    Returns:
+        Il percorso del file scritto.
+
+    Raises:
+        ValueError: Se non c'e' nessuno studente da scrivere.
+    """
+    if not studenti:
+        raise ValueError("Nessuno studente da scrivere")
+
+    cartella = Workbook()
+    foglio = cartella.active
+    if foglio is None:  # pragma: no cover - una cartella nuova ha sempre un foglio
+        foglio = cartella.create_sheet()
+    foglio.title = FOGLIO_UTENTI
+
+    foglio.append(list(CAMPI_UTENTI))
+    for studente in studenti:
+        foglio.append(riga_utente(studente))
+    _formatta(foglio, CAMPI_UTENTI)
+
+    percorso.parent.mkdir(parents=True, exist_ok=True)
+    cartella.save(percorso)
+    return percorso
+
+
 def _scrivi_foglio(foglio: Worksheet, studenti: Iterable[str]) -> None:
     foglio.append(list(INTESTAZIONI))
+    for studente in studenti:
+        foglio.append(list(dividi_nome(studente)))
+    _formatta(foglio, INTESTAZIONI)
+
+
+def _formatta(foglio: Worksheet, intestazioni: Sequence[str]) -> None:
+    """Intestazione in grassetto e bloccata, colonne larghe quanto il contenuto."""
     for cella in foglio[1]:
         cella.font = Font(bold=True)
 
-    for studente in studenti:
-        foglio.append(list(dividi_nome(studente)))
-
     foglio.freeze_panes = "A2"
-    for i, intestazione in enumerate(INTESTAZIONI, 1):
+    for i, intestazione in enumerate(intestazioni, 1):
         larghezza = max(
             [len(intestazione)] + [len(str(c.value or "")) for c in foglio[get_column_letter(i)]]
         )

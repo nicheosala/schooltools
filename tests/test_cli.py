@@ -3,13 +3,14 @@
 from typing import TYPE_CHECKING
 
 import pytest
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from schooltools.cli import _chiedi_voce, _scegli_classi, main
 from schooltools.parsing import Classe
+from schooltools.students import CAMPI_UTENTI
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
     from pathlib import Path
 
 CLASSI = [Classe(id="1", nome="1E LSA"), Classe(id="2", nome="5E LSA")]
@@ -21,6 +22,31 @@ def pagina(tmp_path: Path, registro_html: str) -> Path:
     percorso = tmp_path / "classe.html"
     percorso.write_text(registro_html, encoding="utf-8")
     return percorso
+
+
+def _scrivi_origine(percorso: Path, righe: Sequence[Sequence[object]]) -> Path:
+    """Un elenco di origine su disco, con le righe date cosi' come sono."""
+    cartella = Workbook()
+    foglio = cartella.active
+    assert foglio is not None
+    for riga in righe:
+        foglio.append(list(riga))
+    cartella.save(percorso)
+    return percorso
+
+
+@pytest.fixture
+def origine(tmp_path: Path) -> Path:
+    """Un elenco Nome/Cognome/Classe su disco, da dare a `teams --from`."""
+    return _scrivi_origine(
+        tmp_path / "origine.xlsx",
+        [
+            ["Nome", "Cognome", "Classe"],
+            ["GIULIO", "ROSSI", "1E LSA LICEO SCIENTIFICO OPZIONE SCIENZE APPLICATE"],
+            [None, None, None],
+            ["ANNA", "VERDI", "2B"],
+        ],
+    )
 
 
 def _risposte(monkeypatch: pytest.MonkeyPatch, *valori: str) -> None:
@@ -136,3 +162,65 @@ def test_main_con_file_inesistente(tmp_path: Path, capsys: pytest.CaptureFixture
 
     assert codice == 1
     assert "Errore:" in capsys.readouterr().out
+
+
+def test_main_teams_converte_l_elenco(
+    origine: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`teams` scrive il tracciato di Microsoft 365 saltando le righe vuote."""
+    destinazione = tmp_path / "utenti.xlsx"
+
+    codice = main(["teams", "--from", str(origine), "--to", str(destinazione)])
+
+    assert codice == 0
+    assert "Scritti 2 studenti" in capsys.readouterr().out
+    foglio = load_workbook(destinazione).active
+    assert foglio is not None
+    assert [c.value for c in foglio[1]] == CAMPI_UTENTI
+    assert foglio.max_row == 3
+    assert [c.value for c in foglio[2]][:6] == [
+        "giulio.rossi@istitutobachelet.edu.it",
+        "Giulio",
+        "Rossi",
+        "Giulio Rossi",
+        "Studente",
+        "1ELSA",
+    ]
+
+
+def test_main_teams_con_origine_inesistente(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Un file di origine che non esiste diventa un messaggio, non un traceback."""
+    codice = main(
+        ["teams", "--from", str(tmp_path / "assente.xlsx"), "--to", str(tmp_path / "u.xlsx")]
+    )
+
+    assert codice == 1
+    assert "Errore:" in capsys.readouterr().out
+
+
+def test_main_teams_con_colonna_mancante(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Se all'origine manca una colonna il messaggio dice quale."""
+    percorso = _scrivi_origine(tmp_path / "origine.xlsx", [["Nome", "Cognome"], ["Anna", "Verdi"]])
+
+    codice = main(["teams", "--from", str(percorso), "--to", str(tmp_path / "u.xlsx")])
+
+    assert codice == 1
+    assert "mancano le colonne: Classe" in capsys.readouterr().out
+
+
+def test_main_teams_con_un_solo_studente(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Il conteggio finale e' al singolare quando lo studente e' uno solo."""
+    percorso = _scrivi_origine(
+        tmp_path / "origine.xlsx", [["Nome", "Cognome", "Classe"], ["Anna", "Verdi", "2B"]]
+    )
+
+    codice = main(["teams", "--from", str(percorso), "--to", str(tmp_path / "u.xlsx")])
+
+    assert codice == 0
+    assert "Scritto 1 studente" in capsys.readouterr().out

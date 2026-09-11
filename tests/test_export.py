@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from openpyxl import load_workbook
 
-from schooltools.export import INTESTAZIONI, nome_foglio, scrivi_xlsx
+from schooltools.export import INTESTAZIONI, nome_foglio, scrivi_utenti_xlsx, scrivi_xlsx
+from schooltools.students import CAMPI_UTENTI, Studente
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,3 +91,40 @@ def test_scrivi_xlsx_senza_classi(tmp_path: Path) -> None:
     """Senza nessuna classe non si scrive un file vuoto: si segnala l'errore."""
     with pytest.raises(ValueError, match="Nessuna classe"):
         scrivi_xlsx(tmp_path / "s.xlsx", {})
+
+
+def test_scrivi_utenti_xlsx(tmp_path: Path) -> None:
+    """Il foglio ha le colonne di Microsoft 365 e una riga per studente."""
+    percorso = scrivi_utenti_xlsx(
+        tmp_path / "utenti.xlsx",
+        [
+            Studente(nome="Giulio", cognome="Rossi", classe="1E"),
+            Studente(nome="Maria Luisa", cognome="D'Agostino", classe="5E"),
+        ],
+    )
+
+    foglio = load_workbook(percorso).active
+    assert foglio is not None
+    assert [c.value for c in foglio[1]] == CAMPI_UTENTI
+    assert [c.value for c in foglio[2]][:6] == [
+        "giulio.rossi@istitutobachelet.edu.it",
+        "Giulio",
+        "Rossi",
+        "Giulio Rossi",
+        "Studente",
+        "1E",
+    ]
+    assert foglio.max_row == 3
+
+
+def test_scrivi_utenti_xlsx_crea_le_cartelle(tmp_path: Path) -> None:
+    """Le cartelle mancanti nel percorso di destinazione vengono create."""
+    percorso = scrivi_utenti_xlsx(tmp_path / "a" / "b" / "u.xlsx", [Studente("Anna", "Verdi")])
+
+    assert percorso.is_file()
+
+
+def test_scrivi_utenti_xlsx_senza_studenti(tmp_path: Path) -> None:
+    """Senza nessuno studente non si scrive un file vuoto: si segnala l'errore."""
+    with pytest.raises(ValueError, match="Nessuno studente"):
+        scrivi_utenti_xlsx(tmp_path / "u.xlsx", [])

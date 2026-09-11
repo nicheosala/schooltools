@@ -1,62 +1,78 @@
-"""Test delle utilita' sugli elenchi di studenti."""
-
-from typing import TYPE_CHECKING
+"""Test del tracciato di importazione utenti di Microsoft 365."""
 
 from schooltools.students import (
-    CAMPI_CSV,
-    create_groups,
-    dividi_nome,
-    read_from_csv,
+    CAMPI_UTENTI,
+    Studente,
+    capitalizza,
+    indirizzo,
+    riga_utente,
     sanitize,
-    write_to_csv,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_sanitize() -> None:
-    """Apostrofi e punti spariscono e il resto passa in minuscolo."""
+    """Apostrofi, punti e spazi spariscono e il resto passa in minuscolo."""
     assert sanitize("D'Agostino") == "dagostino"
     assert sanitize("A.B.") == "ab"
+    assert sanitize("De Luca") == "deluca"
 
 
-def test_dividi_nome() -> None:
-    """La prima parola e' il cognome, tutto il resto e' il nome."""
-    assert dividi_nome("Rossi Giulio") == ("Rossi", "Giulio")
-    assert dividi_nome("D'Agostino Maria Luisa") == ("D'Agostino", "Maria Luisa")
-    assert dividi_nome("") == ("", "")
+def test_capitalizza() -> None:
+    """Un nome tutto maiuscolo torna con le sole iniziali maiuscole."""
+    assert capitalizza("ROSSI") == "Rossi"
+    assert capitalizza("D'AGOSTINO MARIA LUISA") == "D'Agostino Maria Luisa"
+    assert capitalizza("") == ""
 
 
-def test_write_to_csv(tmp_path: Path) -> None:
-    """Il CSV ha le colonne di Microsoft 365 e l'indirizzo ricavato dal nome."""
-    percorso = tmp_path / "studenti.csv"
+def test_capitalizza_lascia_stare_chi_ha_gia_delle_minuscole() -> None:
+    """Le parole gia' scritte a mano non vengono raddrizzate."""
+    assert capitalizza("de Luca") == "de Luca"
+    assert capitalizza("McDonald ROSSI") == "McDonald Rossi"
 
-    write_to_csv(str(percorso), ["D'Agostino Maria Luisa"])
 
-    righe = percorso.read_text().splitlines()
-    assert righe[0].split(",") == CAMPI_CSV
-    campi = righe[1].split(",")
-    assert campi[0] == "marialuisa.dagostino@istitutobachelet.edu.it"
-    assert campi[1:5] == [
+def test_indirizzo() -> None:
+    """L'indirizzo non ha spazi, nemmeno con nomi o cognomi composti."""
+    assert indirizzo("Maria Luisa", "De Luca") == "marialuisa.deluca@istitutobachelet.edu.it"
+
+
+def test_riga_utente_mette_la_classe_nel_reparto() -> None:
+    """La classe finisce nel reparto, cioe' il campo su cui si raggruppa in Teams."""
+    riga = riga_utente(Studente(nome="Giulio", cognome="Rossi", classe="1E LSA"))
+
+    assert len(riga) == len(CAMPI_UTENTI)
+    assert dict(zip(CAMPI_UTENTI, riga, strict=True)) == {
+        "Nome utente": "giulio.rossi@istitutobachelet.edu.it",
+        "Nome": "Giulio",
+        "Cognome": "Rossi",
+        "Nome visualizzato": "Giulio Rossi",
+        "Posizione": "Studente",
+        "Reparto": "1ELSA",
+        **dict.fromkeys(CAMPI_UTENTI[6:], ""),
+    }
+
+
+def test_riga_utente_da_un_elenco_in_maiuscolo() -> None:
+    """Nomi in maiuscolo e classe per esteso arrivano nella forma da portale."""
+    riga = riga_utente(
+        Studente(
+            nome="MARIA LUISA",
+            cognome="D'AGOSTINO",
+            classe="1A LL LICEO LINGUISTICO NUOVO ORDINAMENTO",
+        )
+    )
+
+    assert riga[:6] == [
+        "marialuisa.dagostino@istitutobachelet.edu.it",
         "Maria Luisa",
         "D'Agostino",
-        "D'Agostino Maria Luisa",
+        "Maria Luisa D'Agostino",
         "Studente",
+        "1ALL",
     ]
-    assert len(campi) == len(CAMPI_CSV)
 
 
-def test_read_from_csv(tmp_path: Path) -> None:
-    """Un CSV di una colonna sola torna come elenco di nomi."""
-    percorso = tmp_path / "nomi.csv"
-    percorso.write_text("Rossi Giulio\nVerdi Anna\n")
+def test_riga_utente_senza_classe() -> None:
+    """Senza classe il reparto resta vuoto, come gli altri campi non usati."""
+    riga = riga_utente(Studente(nome="Anna", cognome="Verdi"))
 
-    assert read_from_csv(str(percorso)) == ["Rossi Giulio", "Verdi Anna"]
-
-
-def test_create_groups() -> None:
-    """I gruppi sono consecutivi e l'ultimo puo' essere piu' corto degli altri."""
-    gruppi = list(create_groups(["a", "b", "c", "d", "e"], 2))
-
-    assert gruppi == [["a", "b"], ["c", "d"], ["e"]]
+    assert riga[CAMPI_UTENTI.index("Reparto")] == ""
