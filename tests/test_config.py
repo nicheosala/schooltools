@@ -41,7 +41,7 @@ def test_carica_credenziali_dal_file(tmp_path: Path) -> None:
     credenziali = carica_credenziali(percorso)
 
     assert credenziali.utente == "prof"
-    assert credenziali.password == "segreta"
+    assert credenziali.password == "segreta"  # noqa: S105
 
 
 def test_carica_credenziali_dalle_variabili_ambiente(

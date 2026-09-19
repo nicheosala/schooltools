@@ -7,7 +7,7 @@ from pathlib import Path
 PERCORSO_PREDEFINITO = Path("schooltools.env")
 
 CHIAVE_UTENTE = "SPAGGIARI_UTENTE"
-CHIAVE_PASSWORD = "SPAGGIARI_PASSWORD"
+CHIAVE_PASSWORD = "SPAGGIARI_PASSWORD"  # noqa: S105
 
 MODELLO = f"""\
 {CHIAVE_UTENTE}=il-tuo-codice-personale
