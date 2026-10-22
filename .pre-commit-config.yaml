@@ -5,11 +5,10 @@ minimum_pre_commit_version: "4.0.0"
 
 # Unica fonte di verita' per i controlli di qualita'.
 #
-# La CI non ripete questi comandi: .github/workflows/ci.yml esegue
-# `pre-commit run --all-files`, quindi gli hook qui sotto sono letteralmente i
-# controlli che sbarrano ogni push e ogni pull request. Va tenuto cosi': un
-# controllo aggiunto qui e' un controllo che gira in CI, e non c'e' altro posto
-# dove aggiungerne uno.
+# Non c'e' CI: i controlli girano solo in locale. Gli hook senza `stages`
+# girano sia al commit sia al push, quelli lenti o che dipendono dalla rete
+# (pytest, uv audit) solo al push. Un controllo che non sta qui non gira da
+# nessuna parte.
 #
 # Ogni hook specifico del progetto passa da `uv run --frozen`, cosi' le
 # versioni degli strumenti arrivano da uv.lock e non da un secondo insieme di
@@ -70,11 +69,21 @@ repos:
         pass_filenames: false
         require_serial: true
 
-      # Troppo lento per un hook di commit: gira prima del push, e in CI ha un
-      # job dedicato.
+      # Troppo lento per un hook di commit: gira prima del push.
       - id: pytest
         name: pytest
         entry: uv run --frozen pytest
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Dipende dal database delle vulnerabilita' e non dal codice: puo'
+      # fallire anche senza modifiche da parte nostra, quindi gira a ogni push
+      # e non solo quando cambia uv.lock.
+      - id: uv-audit
+        name: uv audit
+        entry: uv audit --preview-features audit-command
         language: system
         always_run: true
         pass_filenames: false

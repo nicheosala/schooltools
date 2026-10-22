@@ -6,10 +6,9 @@ documentazione sono in italiano senza lettere accentate (`e'`, `piu'`,
 
 ## Controlli di qualita'
 
-- I controlli sono definiti una volta sola, in `.pre-commit-config.yaml`. La CI
-  esegue `pre-commit run --all-files` e non una propria copia dei comandi, cosi'
-  i due non possono divergere. Aggiungere un controllo significa aggiungere un
-  hook li' e in nessun altro posto.
+- I controlli sono definiti una volta sola, in `.pre-commit-config.yaml`, e
+  girano solo in locale: non c'e' CI. Aggiungere un controllo significa
+  aggiungere un hook li' e in nessun altro posto.
 - La build non e' finita finche' questi non escono puliti, con zero errori e
   zero warning:
 
@@ -20,8 +19,8 @@ documentazione sono in italiano senza lettere accentate (`e'`, `piu'`,
   uv run pytest
   ```
 
-- `pytest` gira allo stage `pre-push` e non a ogni commit perche' e' troppo
-  lento per un hook di commit; in CI ha un job dedicato. La soglia di copertura
+- `pytest` e `uv audit` girano allo stage `pre-push` e non a ogni commit:
+  il primo e' troppo lento, il secondo dipende dalla rete. La soglia di copertura
   (`fail_under = 85`, con `branch = true`) sta in `[tool.coverage.report]` e non
   va abbassata per far passare la build.
 - Annotazioni di tipo complete ovunque, suite di test compresa. Pyrefly gira con

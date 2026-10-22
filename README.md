@@ -24,7 +24,9 @@ elencate in `pyproject.toml`; non serve attivarlo a mano, ci pensa `uv run`.
 
 Se hai intenzione di modificare il codice, installa anche gli hook di
 pre-commit: al momento del commit sistemano stile e formattazione e
-controllano i tipi, mentre al momento del push eseguono anche i test.
+controllano i tipi, mentre al momento del push eseguono anche i test e
+cercano vulnerabilità note nelle dipendenze. Non c'è CI: questi hook sono gli
+unici controlli.
 
 ```sh
 uv run pre-commit install
@@ -150,15 +152,13 @@ nome né cognome, il programma lo dice in una riga sola e esce con codice 1.
 | `uv audit --preview-features audit-command` | vulnerabilità note nelle dipendenze |
 | `uv build` | costruisce sdist e wheel in `dist/` |
 | `uv run pre-commit run --all-files` | gli hook del commit su tutto il repo |
-| `uv run pre-commit run --all-files --hook-stage pre-push` | come sopra, più i test |
+| `uv run pre-commit run --all-files --hook-stage pre-push` | come sopra, più test e audit |
 
-Gli stessi controlli girano su GitHub Actions a ogni push e pull request
-(`.github/workflows/ci.yml`), con `uv sync --locked`, che fallisce se
-`uv.lock` non è allineato a `pyproject.toml`. La CI non riscrive i comandi:
-esegue `pre-commit run --all-files`, così gli hook locali e i controlli
-remoti non possono divergere. Test e scansione delle dipendenze hanno un job
-a sé; quest'ultimo gira anche una volta a settimana, perché una vulnerabilità
-può essere pubblicata senza che il lock file cambi.
+Non c'è CI: i controlli sono definiti una volta sola in
+`.pre-commit-config.yaml` e girano solo in locale. Al push girano tutti,
+compresi i test e `uv audit`; l'audit gira a ogni push e non solo quando
+cambia `uv.lock`, perché una vulnerabilità può essere pubblicata senza che il
+lock file cambi.
 
 I test non toccano la rete: le pagine di ClasseViva sono salvate ridotte e
 anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
@@ -175,21 +175,17 @@ uv self update                    # uv stesso (se installato con lo script uffic
 uv lock --upgrade                 # tutte le dipendenze in uv.lock, transitive comprese
 uv sync                           # allinea .venv al nuovo lock
 uv run pre-commit autoupdate      # il rev di pre-commit-hooks in .pre-commit-config.yaml
-pinact run --update               # SHA e commento delle action in .github/workflows/
-uv run pre-commit run --all-files --hook-stage pre-push
-uv audit --preview-features audit-command
+uv run pre-commit run --all-files --hook-stage pre-push   # tutti i controlli, test e audit compresi
 ```
 
 Restano a mano, perché nessuno dei comandi sopra li tocca: il vincolo su
 `uv_build` in `[build-system]` di `pyproject.toml` (da allineare alla versione
 di uv), i limiti inferiori delle dipendenze in `pyproject.toml` (`uv lock
 --upgrade` resta dentro i vincoli già scritti) e la versione di Python in
-`.python-version` e `requires-python`. [pinact](https://github.com/suzuki-shunsuke/pinact)
-va installato a parte; in alternativa si cerca l'ultima release di ogni
-action su GitHub e se ne copia lo SHA.
+`.python-version` e `requires-python`.
 
 Se i controlli passano, un commit `deps: aggiorna le dipendenze` su `main` e
-un push: la CI ripete gli stessi controlli.
+un push.
 
 ## Struttura
 
