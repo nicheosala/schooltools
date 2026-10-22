@@ -1,0 +1,79 @@
+name: Lock
+
+# Aggiorna tutto uv.lock, dipendenze transitive comprese, prima che parta
+# Dependabot (.github/dependabot.yml lo fa partire il lunedi' alle 8). Le
+# version update di Dependabot toccano solo le dipendenze dirette: una
+# transitiva vulnerabile, come virtualenv sotto pre-commit, restava nel lock e
+# faceva fallire il job di audit su tutte le sue pull request, che quindi non
+# venivano mergiate.
+#
+# La pull request la apre la GitHub App nicheosala-deps e non il GITHUB_TOKEN:
+# quelle aperte dal token del workflow non fanno partire la CI. Cosi' invece
+# la CI gira sulla pull request come su quelle di Dependabot e, se e' verde,
+# la mergia .github/workflows/automerge.yml.
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+# Il GITHUB_TOKEN non serve: tutto passa dal token dell'app.
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  lock:
+    name: Aggiorna uv.lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RAMO: deps/uv-lock-upgrade
+    steps:
+      # Il token vale un'ora, solo per questo repository e solo per i due
+      # permessi che servono, anche se l'app ne avesse di piu'.
+      - name: Token dell'app
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.LOCK_APP_CLIENT_ID }}
+          private-key: ${{ secrets.LOCK_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      # Qui le credenziali restano: servono a pubblicare il ramo.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Installa uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+
+      # Il ramo riparte ogni volta da main, quindi una pull request rimasta
+      # aperta (CI rossa, o main andato avanti prima del merge) viene
+      # sostituita da quella nuova. Se il lock e' gia' aggiornato, una pull
+      # request rimasta aperta non serve piu' e si chiude.
+      - name: Aggiorna il lock e apri la pull request
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BOT: ${{ steps.app.outputs.app-slug }}[bot]
+        run: |
+          uv lock --upgrade
+          APERTA=$(gh pr list --head "$RAMO" --state open --json number --jq '.[0].number // empty')
+          if git diff --quiet uv.lock; then
+            echo "uv.lock e' gia' aggiornato."
+            if [ -n "$APERTA" ]; then
+              gh pr close "$APERTA" --delete-branch --comment "uv.lock e' gia' aggiornato su main."
+            fi
+            exit 0
+          fi
+          git config user.name "$BOT"
+          git config user.email "$(gh api "users/$BOT" --jq .id)+$BOT@users.noreply.github.com"
+          git switch -C "$RAMO"
+          git commit -m "deps: uv lock --upgrade" uv.lock
+          git push --force origin "$RAMO"
+          if [ -z "$APERTA" ]; then
+            gh pr create --base main --head "$RAMO" --title "deps: uv lock --upgrade" \
+              --body "Aggiornamento settimanale di tutto uv.lock, dipendenze transitive comprese (.github/workflows/lock.yml)."
+          fi

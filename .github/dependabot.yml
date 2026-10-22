@@ -4,6 +4,10 @@ version: 2
 # accorpate in un'unica pull request, major separati. Passano tutte dalla CI e,
 # se e' verde, vengono mergiate da sole (.github/workflows/automerge.yml): i
 # major restano a parte solo per capire a colpo d'occhio chi ha rotto cosa.
+#
+# Tutto parte il lunedi' alle 8, dopo .github/workflows/lock.yml (alle 4 UTC),
+# che aggiorna anche le dipendenze transitive: Dependabot lavora cosi' su un
+# lock gia' pulito e l'audit non blocca le sue pull request.
 updates:
   # Dipendenze Python: e' qui che nascono le vulnerabilita' transitive, come
   # quella di soupsieve. Copre anche ruff, pyrefly, pytest e pre-commit, che il
@@ -12,6 +16,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Rome"
     commit-message:
       prefix: "deps"
     groups:
@@ -24,6 +31,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Rome"
     commit-message:
       prefix: "ci"
     groups:
@@ -37,6 +47,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Rome"
     commit-message:
       prefix: "ci"
     groups:
