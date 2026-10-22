@@ -26,8 +26,8 @@ jobs:
     timeout-minutes: 10
     steps:
       # Le action sono pinnate allo SHA del commit, non al tag: un tag e'
-      # spostabile dal suo autore, lo SHA no. Dependabot aggiorna SHA e
-      # commento insieme.
+      # spostabile dal suo autore, lo SHA no. SHA e commento si aggiornano a
+      # mano, insieme (vedi "Aggiornare le dipendenze" nel README).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

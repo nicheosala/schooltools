@@ -164,6 +164,33 @@ I test non toccano la rete: le pagine di ClasseViva sono salvate ridotte e
 anonimizzate in `tests/data/`, e il client HTTP viene sostituito da un
 `MockTransport`.
 
+### Aggiornare le dipendenze
+
+Nessun bot aggiorna il repository: lo si fa a mano, ogni tanto, partendo da
+un `main` pulito e aggiornato.
+
+```sh
+git pull
+uv self update                    # uv stesso (se installato con lo script ufficiale)
+uv lock --upgrade                 # tutte le dipendenze in uv.lock, transitive comprese
+uv sync                           # allinea .venv al nuovo lock
+uv run pre-commit autoupdate      # il rev di pre-commit-hooks in .pre-commit-config.yaml
+pinact run --update               # SHA e commento delle action in .github/workflows/
+uv run pre-commit run --all-files --hook-stage pre-push
+uv audit --preview-features audit-command
+```
+
+Restano a mano, perché nessuno dei comandi sopra li tocca: il vincolo su
+`uv_build` in `[build-system]` di `pyproject.toml` (da allineare alla versione
+di uv), i limiti inferiori delle dipendenze in `pyproject.toml` (`uv lock
+--upgrade` resta dentro i vincoli già scritti) e la versione di Python in
+`.python-version` e `requires-python`. [pinact](https://github.com/suzuki-shunsuke/pinact)
+va installato a parte; in alternativa si cerca l'ultima release di ogni
+action su GitHub e se ne copia lo SHA.
+
+Se i controlli passano, un commit `deps: aggiorna le dipendenze` su `main` e
+un push: la CI ripete gli stessi controlli.
+
 ## Struttura
 
 | File | Contenuto |
