@@ -27,10 +27,7 @@ URL_API_AUTH = f"{BASE}/auth-p7/app/default/AuthApi4.php"
 URL_REGISTRO = f"{BASE}/cvv/app/default/regclasse.php"
 
 DESTINAZIONE = "cvv"
-AGENTE = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"
-)
+AGENTE = "Mozilla/5.0 (X11; Linux x86_64; rv:159.0) Gecko/20100101 Firefox/159.0"
 
 
 class RegistroError(Exception):
