@@ -53,6 +53,14 @@ se preferisci tenere la password in un gestore di segreti:
 SPAGGIARI_UTENTE=... SPAGGIARI_PASSWORD=... uv run python -m schooltools
 ```
 
+Al posto della password si può indicare un comando che la stampa su stdout,
+eseguito dalla shell solo quando `SPAGGIARI_PASSWORD` manca. Per esempio, per
+prenderla da KeePassXC (il comando chiede la password del database):
+
+```
+SPAGGIARI_PASSWORD_COMANDO=keepassxc-cli show -s -a Password ~/Passwords.kdbx Spaggiari
+```
+
 ## Uso
 
 ```sh

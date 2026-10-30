@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from schooltools.config import (
+    CHIAVE_COMANDO,
     CHIAVE_PASSWORD,
     CHIAVE_UTENTE,
     CredenzialiMancantiError,
@@ -61,4 +62,41 @@ def test_carica_credenziali_incomplete(tmp_path: Path, monkeypatch: pytest.Monke
     percorso.write_text(f"{CHIAVE_UTENTE}=prof\n")
 
     with pytest.raises(CredenzialiMancantiError, match=r"schooltools\.env"):
+        carica_credenziali(percorso)
+
+
+def test_carica_credenziali_password_da_comando(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Senza password, la si prende dall'uscita del comando, senza il fine riga."""
+    monkeypatch.delenv(CHIAVE_PASSWORD, raising=False)
+    percorso = tmp_path / "schooltools.env"
+    percorso.write_text(f"{CHIAVE_UTENTE}=prof\n{CHIAVE_COMANDO}=echo 'segreta con spazi'\n")
+
+    assert carica_credenziali(percorso).password == "segreta con spazi"  # noqa: S105
+
+
+def test_carica_credenziali_password_esplicita_vince_sul_comando(tmp_path: Path) -> None:
+    """Con la password gia' nel file il comando non viene eseguito."""
+    percorso = tmp_path / "schooltools.env"
+    percorso.write_text(
+        f"{CHIAVE_UTENTE}=prof\n{CHIAVE_PASSWORD}=segreta\n{CHIAVE_COMANDO}=exit 1\n"
+    )
+
+    assert carica_credenziali(percorso).password == "segreta"  # noqa: S105
+
+
+@pytest.mark.parametrize(
+    ("comando", "messaggio"),
+    [("exit 3", "codice 3"), ("true", "non ha stampato niente")],
+)
+def test_carica_credenziali_comando_che_fallisce(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, comando: str, messaggio: str
+) -> None:
+    """Un comando che fallisce o non stampa niente diventa un errore di credenziali."""
+    monkeypatch.delenv(CHIAVE_PASSWORD, raising=False)
+    percorso = tmp_path / "schooltools.env"
+    percorso.write_text(f"{CHIAVE_UTENTE}=prof\n{CHIAVE_COMANDO}={comando}\n")
+
+    with pytest.raises(CredenzialiMancantiError, match=messaggio):
         carica_credenziali(percorso)

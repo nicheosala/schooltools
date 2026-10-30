@@ -1,5 +1,6 @@
 """Lettura delle credenziali di Spaggiari da `schooltools.env`."""
 
+import subprocess
 from dataclasses import dataclass
 from os import environ
 from pathlib import Path
@@ -8,6 +9,7 @@ PERCORSO_PREDEFINITO = Path("schooltools.env")
 
 CHIAVE_UTENTE = "SPAGGIARI_UTENTE"
 CHIAVE_PASSWORD = "SPAGGIARI_PASSWORD"  # noqa: S105
+CHIAVE_COMANDO = "SPAGGIARI_PASSWORD_COMANDO"
 
 MODELLO = f"""\
 {CHIAVE_UTENTE}=il-tuo-codice-personale
@@ -44,11 +46,44 @@ def leggi_env(testo: str) -> dict[str, str]:
     return valori
 
 
+def password_da_comando(comando: str) -> str:
+    """La password stampata su stdout da un comando della shell.
+
+    Il comando eredita terminale, stdin e stderr: un gestore di password che
+    chiede la sua password principale (come `keepassxc-cli`) puo' farlo. Della
+    sua uscita si toglie solo il fine riga finale.
+
+    Args:
+        comando: Riga da far eseguire alla shell.
+
+    Returns:
+        La password stampata dal comando.
+
+    Raises:
+        CredenzialiMancantiError: Se il comando fallisce o non stampa niente.
+    """
+    # shell=True e' voluto: il comando lo scrive l'utente nel proprio
+    # schooltools.env, e cosi' puo' usare pipe e virgolette come nel terminale.
+    esito = subprocess.run(  # noqa: S602
+        comando, shell=True, stdout=subprocess.PIPE, text=True, check=False
+    )
+    if esito.returncode != 0:
+        raise CredenzialiMancantiError(
+            f"Il comando in {CHIAVE_COMANDO} e' uscito con codice {esito.returncode}"
+        )
+    password = esito.stdout.rstrip("\r\n")
+    if not password:
+        raise CredenzialiMancantiError(f"Il comando in {CHIAVE_COMANDO} non ha stampato niente")
+    return password
+
+
 def carica_credenziali(percorso: Path = PERCORSO_PREDEFINITO) -> Credenziali:
     """Le credenziali di Spaggiari, lette dal file indicato.
 
     Le variabili d'ambiente `SPAGGIARI_UTENTE` e `SPAGGIARI_PASSWORD` fanno da
-    alternativa quando il file non esiste o non contiene la voce cercata.
+    alternativa quando il file non esiste o non contiene la voce cercata. Se
+    la password manca sia nel file sia nell'ambiente, la si chiede al comando
+    in `SPAGGIARI_PASSWORD_COMANDO` (anche questo dal file o dall'ambiente).
 
     Args:
         percorso: File `.env` da cui leggere le credenziali.
@@ -57,7 +92,8 @@ def carica_credenziali(percorso: Path = PERCORSO_PREDEFINITO) -> Credenziali:
         Le credenziali trovate.
 
     Raises:
-        CredenzialiMancantiError: Se utente o password restano vuoti.
+        CredenzialiMancantiError: Se utente o password restano vuoti, o se il
+            comando della password fallisce.
     """
     valori: dict[str, str] = {}
     if percorso.is_file():
@@ -65,6 +101,9 @@ def carica_credenziali(percorso: Path = PERCORSO_PREDEFINITO) -> Credenziali:
 
     utente = valori.get(CHIAVE_UTENTE) or environ.get(CHIAVE_UTENTE, "")
     password = valori.get(CHIAVE_PASSWORD) or environ.get(CHIAVE_PASSWORD, "")
+    comando = valori.get(CHIAVE_COMANDO) or environ.get(CHIAVE_COMANDO, "")
+    if utente and not password and comando:
+        password = password_da_comando(comando)
 
     if not utente or not password:
         raise CredenzialiMancantiError(
