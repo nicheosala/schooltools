@@ -184,6 +184,7 @@ uv lock --upgrade                 # tutte le dipendenze in uv.lock, transitive c
 uv sync                           # allinea .venv al nuovo lock
 uv run pre-commit autoupdate      # il rev di pre-commit-hooks in .pre-commit-config.yaml
 uv run pre-commit run --all-files --hook-stage pre-push   # tutti i controlli, test e audit compresi
+uv cache clean                    # svuota ~/.cache/uv dai download qui sopra, niente la pulisce da solo
 ```
 
 Restano a mano, perché nessuno dei comandi sopra li tocca: il vincolo su
